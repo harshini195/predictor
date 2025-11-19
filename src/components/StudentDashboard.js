@@ -19,9 +19,6 @@ import {
   Assessment,
   QueryStats,
   Insights,
-  Star,
-  Warning,
-  Refresh,
 } from "@mui/icons-material";
 import {
   PieChart as RePieChart,
@@ -36,9 +33,8 @@ const COLORS = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc949"
 
 export default function StudentDashboard({ latestPrediction, predictionHistory = [] }) {
   const [insights, setInsights] = useState({ rec: [], alerts: [] });
-  const [simResult, setSimResult] = useState(null); // <-- simulator result
+  const [simResult, setSimResult] = useState(null);
 
-  // Extract inputs (safe)
   const inputs = latestPrediction?.inputs || {};
   const attendance = Number(inputs.attendance ?? 0);
   const studyHours = Number(inputs.studyHours ?? inputs.study_hours ?? 0);
@@ -46,7 +42,6 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   const assignments = Number(inputs.assignments ?? 0);
   const participation = inputs.participation ?? "Medium";
 
-  // Performance score (same formula used in simulator)
   const participationWeight = participation === "High" ? 10 : participation === "Medium" ? 5 : 2;
   const performanceScore = Math.round(
     attendance * 0.30 +
@@ -56,10 +51,15 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     participationWeight * 0.15
   );
   const scoreLabel =
-    performanceScore >= 80 ? "Excellent" : performanceScore >= 60 ? "Good" : performanceScore >= 40 ? "Average" : "Needs Improvement";
-  const RiskColor = performanceScore >= 80 ? "success" : performanceScore >= 60 ? "info" : performanceScore >= 40 ? "warning" : "error";
+    performanceScore >= 80 ? "Excellent" :
+    performanceScore >= 60 ? "Good" :
+    performanceScore >= 40 ? "Average" :
+    "Needs Improvement";
 
-  // Pie breakdown (normalized)
+  const RiskColor = performanceScore >= 80 ? "success" :
+                    performanceScore >= 60 ? "info" :
+                    performanceScore >= 40 ? "warning" : "error";
+
   const pieData = [
     { name: "Attendance", value: attendance },
     { name: "Study Hours", value: studyHours * 8 },
@@ -67,7 +67,6 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     { name: "Assignments", value: assignments * 16.6 },
   ];
 
-  // Insights generation
   useEffect(() => {
     const rec = [];
     const alerts = [];
@@ -85,11 +84,11 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     setInsights({ rec, alerts });
   }, [latestPrediction, attendance, studyHours, marks, assignments]);
 
-  // Subject-wise heatmap simulation (if subject marks present)
   const subjectNames = ["SEPM", "CN", "TOC", "CV/CC", "RM"];
   let subjectScores = [0, 0, 0, 0, 0];
+
   if (latestPrediction?.subjectMarks) {
-    subjectScores = subjectNames.map((sKey, i) => {
+    subjectScores = subjectNames.map((_, i) => {
       const mapKey = ["sepm", "cn", "toc", "cvcc", "rm"][i];
       return Number(latestPrediction.subjectMarks[mapKey] ?? 0);
     });
@@ -126,14 +125,14 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
                 </Box>
               </Grid>
 
-              {/* Simulator result display (if any) */}
               <Grid item xs={12} md={5} sx={{ textAlign: "center" }}>
                 <Avatar sx={{ width: 72, height: 72, bgcolor: "rgba(255,255,255,0.2)", mx: "auto" }}>
                   <Insights sx={{ fontSize: 36 }} />
                 </Avatar>
-                <Typography variant="caption" display="block" sx={{ mt: 1 }}>Model & insights</Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                  Model & insights
+                </Typography>
 
-                {/* Show latest saved prediction if available */}
                 {latestPrediction?.prediction && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="subtitle2">Your saved prediction</Typography>
@@ -142,15 +141,13 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
                     </Typography>
                   </Box>
                 )}
-
-                
               </Grid>
             </Grid>
           </CardContent>
         </Card>
       </Fade>
 
-      {/* TOP METRICS ANALYTICS (RESTORED) */}
+      {/* TOP METRICS */}
       <Grid container spacing={3} sx={{ mt: 1, mb: 3 }}>
         {[
           { label: "Attendance", value: `${attendance}%`, icon: <School />, color: "success" },
@@ -174,7 +171,7 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
         ))}
       </Grid>
 
-      {/* Metrics & Charts */}
+      {/* Charts */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Card>
@@ -183,7 +180,9 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
               <ResponsiveContainer width="100%" height={260}>
                 <RePieChart>
                   <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={80} label>
-                    {pieData.map((entry, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
+                    {pieData.map((entry, idx) => (
+                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                    ))}
                   </Pie>
                   <Tooltip />
                 </RePieChart>
@@ -196,25 +195,45 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           <Card>
             <CardContent>
               <Typography variant="h6">AI Recommendations</Typography>
-              {insights.rec.map((r, i) => <Alert key={i} severity="info" sx={{ mb: 1 }}>{r}</Alert>)}
+              {insights.rec.map((r, i) => (
+                <Alert key={i} severity="info" sx={{ mb: 1 }}>
+                  {r}
+                </Alert>
+              ))}
               <Divider sx={{ my: 1 }} />
               <Typography variant="subtitle2">Alerts</Typography>
-              {insights.alerts.length > 0 ? insights.alerts.map((a, i) => <Alert key={i} severity="warning" sx={{ mb: 1 }}>{a}</Alert>) : <Alert severity="success">No active alerts</Alert>}
+              {insights.alerts.length > 0 ? (
+                insights.alerts.map((a, i) => (
+                  <Alert key={i} severity="warning" sx={{ mb: 1 }}>
+                    {a}
+                  </Alert>
+                ))
+              ) : (
+                <Alert severity="success">No active alerts</Alert>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Heatmap + Study Plan */}
+      {/* SUBJECT HEATMAP (FULL WIDTH NOW) */}
       <Grid container spacing={3} sx={{ mt: 3 }}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6">Subject-wise Heatmap</Typography>
               <Grid container spacing={1} sx={{ mt: 2 }}>
                 {subjectNames.map((subj, idx) => (
                   <Grid item xs={6} sm={4} md={2} key={subj}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: subjectHeatColors[idx], color: "white", textAlign: "center" }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: subjectHeatColors[idx],
+                        color: "white",
+                        textAlign: "center",
+                      }}
+                    >
                       <Typography variant="subtitle2">{subj}</Typography>
                       <Typography variant="h6">{subjectScores[idx]}</Typography>
                     </Box>
@@ -224,25 +243,9 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Personalized Weekly Study Plan</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Generated from your input</Typography>
-              <Box>
-                <Typography variant="subtitle2">Mon — Focus: {subjectNames[0]} • 2h</Typography>
-                <Typography variant="subtitle2">Tue — Focus: {subjectNames[1]} • 2h</Typography>
-                <Typography variant="subtitle2">Wed — Focus: {subjectNames[2]} • 2h</Typography>
-                <Typography variant="subtitle2">Thu — Focus: {subjectNames[3]} • 2h</Typography>
-                <Typography variant="subtitle2">Fri — Focus: {subjectNames[4]} • 2h</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
 
-      {/* Insert Simulator — passes a callback to capture ML result */}
+      {/* Prediction Simulator */}
       <PredictionSimulator
         initial={{ attendance, studyHours, internalTotal: marks, assignments, participation }}
         onSimulate={(data) => setSimResult(data)}
@@ -253,11 +256,11 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
         <CardContent>
           <Typography variant="h6">Recent Predictions</Typography>
           {predictionHistory.length === 0 && <Typography>No predictions yet</Typography>}
-          {predictionHistory.slice(0,5).map((p, i) => (
+          {predictionHistory.slice(0, 5).map((p, i) => (
             <Box key={i} sx={{ display: "flex", justifyContent: "space-between", my: 1 }}>
               <Typography>{new Date(p.date).toLocaleString()}</Typography>
               <Typography color={p.prediction === "Pass" ? "success.main" : "error.main"} fontWeight="bold">
-                {p.prediction} ({Math.round(p.confidence*100)}%)
+                {p.prediction} ({Math.round(p.confidence * 100)}%)
               </Typography>
             </Box>
           ))}
