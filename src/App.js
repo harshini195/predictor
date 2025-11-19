@@ -1,5 +1,5 @@
 // ==============================
-//   FINAL CLEAN APP.JS
+//   FINAL UPDATED APP.JS (JWT + DB)
 // ==============================
 import React, { useState, useEffect } from "react";
 import {
@@ -10,7 +10,14 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { ThemeProvider, createTheme, CssBaseline, Box } from "@mui/material";
+import {
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  Box
+} from "@mui/material";
+
+import axios from "axios";
 
 import StudentAuth from "./components/StudentAuth";
 import PredictorForm from "./components/PredictorForm";
@@ -22,10 +29,28 @@ import FacultyPredictForm from "./components/FacultyPredictForm";
 import InsightsPage from "./components/InsightsPage";
 
 // -------------------------------
+// AXIOS TOKEN SETUP
+// -------------------------------
+axios.defaults.baseURL = "http://127.0.0.1:5001";
+
+// Automatically attach Authorization header
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers["Authorization"] = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// -------------------------------
 // PROTECTED ROUTE (ROLE BASED)
 // -------------------------------
 function ProtectedRoute({ user, role, children }) {
-  if (!user) return <Navigate to="/login" replace />;
+  const token = localStorage.getItem("authToken");
+
+  if (!user || !token) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (role && user.role !== role) {
     return <Navigate to="/login" replace />;
@@ -51,14 +76,22 @@ export default function App() {
   // Load saved user on refresh
   useEffect(() => {
     const savedUser = localStorage.getItem("loggedStudent");
-    if (savedUser) setUser(JSON.parse(savedUser));
+    const savedToken = localStorage.getItem("authToken");
+
+    if (savedUser && savedToken) {
+      setUser(JSON.parse(savedUser));
+    }
+
     setLoading(false);
   }, []);
 
   // Login handler
   const handleLogin = (userData) => {
     setUser(userData);
+
+    // Save backend-authenticated user + JWT
     localStorage.setItem("loggedStudent", JSON.stringify(userData));
+    localStorage.setItem("authToken", userData.token);
   };
 
   // Logout handler
@@ -67,7 +100,9 @@ export default function App() {
       const key = `history_${user.email}`;
       localStorage.removeItem(key);
     }
+
     localStorage.removeItem("loggedStudent");
+    localStorage.removeItem("authToken");
     setUser(null);
   };
 
@@ -76,7 +111,11 @@ export default function App() {
       <CssBaseline />
       <Router>
         {!loading && (
-          <AppContent user={user} handleLogin={handleLogin} handleLogout={handleLogout} />
+          <AppContent
+            user={user}
+            handleLogin={handleLogin}
+            handleLogout={handleLogout}
+          />
         )}
       </Router>
     </ThemeProvider>
@@ -201,7 +240,7 @@ function AppContent({ user, handleLogin, handleLogout }) {
             }
           />
 
-          {/* ANY OTHER ROUTE */}
+          {/* FALLBACK */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Box>

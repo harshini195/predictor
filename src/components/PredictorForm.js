@@ -28,9 +28,18 @@ import {
 } from "@mui/icons-material";
 
 import axios from "axios";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import { useNavigate } from "react-router-dom";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+} from "recharts";
 
 export default function PredictorForm({ onPrediction }) {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     attendance: "",
     studyHours: "",
@@ -53,9 +62,9 @@ export default function PredictorForm({ onPrediction }) {
   const [confidence, setConfidence] = useState(null);
   const [error, setError] = useState("");
 
-  /* --------------------------------------------------
-     AUTO-SUM INDIVIDUAL MARKS → UPDATE TOTAL
-  -----------------------------------------------------*/
+  /* --------------------------
+       AUTO-SUM INDIVIDUAL MARKS
+  -------------------------- */
   useEffect(() => {
     if (marksMode === "individual") {
       const total = Object.values(subjectMarks)
@@ -66,26 +75,24 @@ export default function PredictorForm({ onPrediction }) {
     }
   }, [subjectMarks, marksMode]);
 
-  /* --------------------------------------------------
-     ONCHANGE HELPERS
-  -----------------------------------------------------*/
+  /* --------------------------
+       HELPERS
+  -------------------------- */
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
   };
 
   const handleSubjectMarksChange = (subj) => (e) => {
-    let v = e.target.value;
-    if (v === "") {
-      setSubjectMarks({ ...subjectMarks, [subj]: "" });
-    } else {
-      v = Math.max(0, Math.min(50, Number(v)));
-      setSubjectMarks({ ...subjectMarks, [subj]: v });
-    }
+    const val = e.target.value;
+    setSubjectMarks({
+      ...subjectMarks,
+      [subj]: val === "" ? "" : Math.max(0, Math.min(50, Number(val))),
+    });
   };
 
-  /* --------------------------------------------------
-     VALIDATION
-  -----------------------------------------------------*/
+  /* --------------------------
+       VALIDATION
+  -------------------------- */
   const validate = () => {
     if (
       form.attendance === "" ||
@@ -104,54 +111,71 @@ export default function PredictorForm({ onPrediction }) {
     return true;
   };
 
-  /* --------------------------------------------------
-     PREDICT FUNCTION
-  -----------------------------------------------------*/
+  /* --------------------------
+       PREDICT FUNCTION (JWT SECURED)
+  -------------------------- */
   const handlePredict = async () => {
     if (!validate()) {
       setError("Please fill all fields.");
       return;
     }
+
     setError("");
     setLoading(true);
+
+    const token = localStorage.getItem("authToken");
 
     try {
       const totalMarks =
         marksMode === "total"
           ? Number(form.internalTotal)
           : Object.values(subjectMarks)
-              .map((v) => Number(v) || 0)
+              .map((v) => Number(v))
               .reduce((a, b) => a + b, 0);
 
-      const res = await axios.post("http://127.0.0.1:5001/predict", {
-        attendance: Number(form.attendance),
-        studyHours: Number(form.studyHours),
-        internalTotal: totalMarks,
-        assignments: Number(form.assignments),
-        participation: form.participation,
-      });
+      const res = await axios.post(
+        "http://127.0.0.1:5001/predict",
+        {
+          attendance: Number(form.attendance),
+          studyHours: Number(form.studyHours),
+          internalTotal: totalMarks,
+          assignments: Number(form.assignments),
+          participation: form.participation,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       setResult(res.data.prediction);
       setConfidence((res.data.confidence * 100).toFixed(1));
 
-      onPrediction({
-        date: new Date().toISOString(),
-        prediction: res.data.prediction,
-        confidence: res.data.confidence,
-        inputs: { ...form, internalTotal: totalMarks },
-        subjectMarks: marksMode === "individual" ? subjectMarks : undefined,
-      });
+      if (onPrediction) {
+        onPrediction({
+          date: new Date().toISOString(),
+          prediction: res.data.prediction,
+          confidence: res.data.confidence,
+          inputs: { ...form, internalTotal: totalMarks },
+          subjectMarks: marksMode === "individual" ? subjectMarks : undefined,
+        });
+      }
     } catch (err) {
       console.log(err);
-      setError("Prediction failed. Check backend.");
+
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError("Session expired. Please login again.");
+        setTimeout(() => navigate("/login"), 1500);
+      } else {
+        setError("Prediction failed. Check backend.");
+      }
     }
 
     setLoading(false);
   };
 
-  /* --------------------------------------------------
-     UI
-  -----------------------------------------------------*/
+  /* --------------------------
+       UI BELOW
+  -------------------------- */
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ mb: 3 }}>
@@ -167,7 +191,6 @@ export default function PredictorForm({ onPrediction }) {
             </Typography>
 
             <Grid container spacing={2}>
-
               {/* Attendance */}
               <Grid item xs={12}>
                 <TextField
@@ -178,7 +201,10 @@ export default function PredictorForm({ onPrediction }) {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      attendance: Math.max(0, Math.min(100, Number(e.target.value))),
+                      attendance: Math.max(
+                        0,
+                        Math.min(100, Number(e.target.value))
+                      ),
                     })
                   }
                   inputProps={{ min: 0, max: 100 }}
@@ -196,7 +222,10 @@ export default function PredictorForm({ onPrediction }) {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      studyHours: Math.max(0, Math.min(6, Number(e.target.value))),
+                      studyHours: Math.max(
+                        0,
+                        Math.min(6, Number(e.target.value))
+                      ),
                     })
                   }
                   inputProps={{ min: 0, max: 6 }}
@@ -214,7 +243,10 @@ export default function PredictorForm({ onPrediction }) {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      assignments: Math.max(0, Math.min(6, Number(e.target.value))),
+                      assignments: Math.max(
+                        0,
+                        Math.min(6, Number(e.target.value))
+                      ),
                     })
                   }
                   inputProps={{ min: 0, max: 6 }}
@@ -231,8 +263,16 @@ export default function PredictorForm({ onPrediction }) {
                   value={marksMode}
                   onChange={(e) => setMarksMode(e.target.value)}
                 >
-                  <FormControlLabel value="total" control={<Radio />} label="Enter Total Marks" />
-                  <FormControlLabel value="individual" control={<Radio />} label="Enter Individual Subject Marks" />
+                  <FormControlLabel
+                    value="total"
+                    control={<Radio />}
+                    label="Enter Total Marks"
+                  />
+                  <FormControlLabel
+                    value="individual"
+                    control={<Radio />}
+                    label="Enter Subject-wise Marks"
+                  />
                 </RadioGroup>
               </Grid>
 
@@ -247,7 +287,10 @@ export default function PredictorForm({ onPrediction }) {
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        internalTotal: Math.max(0, Math.min(250, Number(e.target.value))),
+                        internalTotal: Math.max(
+                          0,
+                          Math.min(250, Number(e.target.value))
+                        ),
                       })
                     }
                     inputProps={{ min: 0, max: 250 }}
@@ -324,50 +367,51 @@ export default function PredictorForm({ onPrediction }) {
             </Grid>
           </Paper>
         </Grid>
-{/* SUBJECT-WISE PIE CHART SECTION */}
-{marksMode === "individual" && (
-  <Box sx={{ mt: 5 }}>
-    <Card sx={{ p: 3, borderRadius: 3 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        Subject-wise Marks Breakdown
-      </Typography>
 
-      <Box sx={{ width: "100%", height: 350 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={[
-                { name: "SEPM", value: Number(subjectMarks.sepm || 0) },
-                { name: "CN", value: Number(subjectMarks.cn || 0) },
-                { name: "TOC", value: Number(subjectMarks.toc || 0) },
-                { name: "CV/CC", value: Number(subjectMarks.cvcc || 0) },
-                { name: "RM", value: Number(subjectMarks.rm || 0) },
-              ]}
-              cx="50%"
-              cy="50%"
-              outerRadius={110}
-              label={({ name, percent }) =>
-                `${name}: ${(percent * 100).toFixed(0)}%`
-              }
-              dataKey="value"
-            >
-              {[
-                "#4e79a7",
-                "#f28e2b",
-                "#e15759",
-                "#76b7b2",
-                "#59a14f",
-              ].map((c, i) => (
-                <Cell key={i} fill={c} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      </Box>
-    </Card>
-  </Box>
-)}
+        {/* SUBJECT-WISE PIE CHART */}
+        {marksMode === "individual" && (
+          <Box sx={{ mt: 5 }}>
+            <Card sx={{ p: 3, borderRadius: 3 }}>
+              <Typography variant="h5" sx={{ mb: 2 }}>
+                Subject-wise Marks Breakdown
+              </Typography>
+
+              <Box sx={{ width: "100%", height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: "SEPM", value: Number(subjectMarks.sepm || 0) },
+                        { name: "CN", value: Number(subjectMarks.cn || 0) },
+                        { name: "TOC", value: Number(subjectMarks.toc || 0) },
+                        { name: "CV/CC", value: Number(subjectMarks.cvcc || 0) },
+                        { name: "RM", value: Number(subjectMarks.rm || 0) },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={110}
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                      dataKey="value"
+                    >
+                      {[
+                        "#4e79a7",
+                        "#f28e2b",
+                        "#e15759",
+                        "#76b7b2",
+                        "#59a14f",
+                      ].map((c, i) => (
+                        <Cell key={i} fill={c} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            </Card>
+          </Box>
+        )}
 
         {/* RIGHT SIDE RESULT */}
         <Grid item xs={12} md={6}>
@@ -399,7 +443,9 @@ export default function PredictorForm({ onPrediction }) {
                         height: 10,
                         borderRadius: 5,
                         backgroundColor: "rgba(255,255,255,0.3)",
-                        "& .MuiLinearProgress-bar": { backgroundColor: "white" },
+                        "& .MuiLinearProgress-bar": {
+                          backgroundColor: "white",
+                        },
                       }}
                     />
                   </Box>
@@ -415,7 +461,6 @@ export default function PredictorForm({ onPrediction }) {
           )}
         </Grid>
       </Grid>
-      
     </Box>
   );
 }

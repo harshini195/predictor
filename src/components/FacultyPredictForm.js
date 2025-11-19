@@ -16,6 +16,7 @@ import {
   Alert,
   Stack,
 } from "@mui/material";
+
 import {
   School,
   Timer,
@@ -24,23 +25,27 @@ import {
   EmojiEvents,
   Insights,
 } from "@mui/icons-material";
+
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function FacultyPredictForm({ onResult }) {
-  // Slider values
+  const navigate = useNavigate();
+
+  // Slider inputs
   const [attendance, setAttendance] = useState(75);
   const [studyHours, setStudyHours] = useState(2);
   const [internalTotal, setInternalTotal] = useState(150);
   const [assignments, setAssignments] = useState(3);
   const [participation, setParticipation] = useState("Medium");
 
-  // Output values
+  // Output
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState(null);
   const [confidence, setConfidence] = useState(null);
   const [error, setError] = useState("");
 
-  // Slider marks for UX
+  // Marks
   const attendanceMarks = [
     { value: 0, label: "0%" },
     { value: 50, label: "50%" },
@@ -68,6 +73,9 @@ export default function FacultyPredictForm({ onResult }) {
     { value: 250, label: "250" },
   ];
 
+  // -----------------------
+  // SUBMIT (with JWT auth)
+  // -----------------------
   const handleSubmit = async () => {
     setError("");
     setPrediction(null);
@@ -78,16 +86,22 @@ export default function FacultyPredictForm({ onResult }) {
       studyHours: Number(studyHours),
       internalTotal: Number(internalTotal),
       assignments: Number(assignments),
-      participation: participation,
+      participation,
     };
 
     try {
       setLoading(true);
 
-      // 🔥 Correct endpoint + correct payload
+      const token = localStorage.getItem("authToken");
+
       const res = await axios.post(
-        "http://127.0.0.1:5001/predict",
-        payload
+        "http://127.0.0.1:5001/faculty/predict",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       const pred = res.data.prediction;
@@ -106,9 +120,13 @@ export default function FacultyPredictForm({ onResult }) {
       }
     } catch (err) {
       console.error("Faculty predict error:", err);
-      setError(
-        "Prediction failed — check backend (http://127.0.0.1:5001/faculty/predict)."
-      );
+
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError("Session expired or unauthorized. Please login again.");
+        setTimeout(() => navigate("/login"), 1500);
+      } else {
+        setError("Prediction failed — check backend.");
+      }
     } finally {
       setLoading(false);
     }
@@ -124,7 +142,7 @@ export default function FacultyPredictForm({ onResult }) {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* Left Side Input Panel */}
+        {/* Left Input Panel */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, borderRadius: 3 }}>
             <Stack spacing={3}>
@@ -201,11 +219,7 @@ export default function FacultyPredictForm({ onResult }) {
                   onChange={(e) => setParticipation(e.target.value)}
                 >
                   <FormControlLabel value="Low" control={<Radio />} label="Low" />
-                  <FormControlLabel
-                    value="Medium"
-                    control={<Radio />}
-                    label="Medium"
-                  />
+                  <FormControlLabel value="Medium" control={<Radio />} label="Medium" />
                   <FormControlLabel value="High" control={<Radio />} label="High" />
                 </RadioGroup>
               </Box>
@@ -241,7 +255,7 @@ export default function FacultyPredictForm({ onResult }) {
           </Paper>
         </Grid>
 
-        {/* Right Side Output */}
+        {/* Right Output Panel */}
         <Grid item xs={12} md={6}>
           {prediction ? (
             <Card sx={{ p: 2 }}>
@@ -273,18 +287,12 @@ export default function FacultyPredictForm({ onResult }) {
                   {/* Summary */}
                   <Box sx={{ mt: 3, textAlign: "left" }}>
                     <Typography variant="body2">✔ Attendance: {attendance}%</Typography>
-                    <Typography variant="body2">
-                      ✔ Study Hours/day: {studyHours}
-                    </Typography>
+                    <Typography variant="body2">✔ Study Hours/day: {studyHours}</Typography>
                     <Typography variant="body2">
                       ✔ Internal Total: {internalTotal}/250
                     </Typography>
-                    <Typography variant="body2">
-                      ✔ Assignments: {assignments}
-                    </Typography>
-                    <Typography variant="body2">
-                      ✔ Participation: {participation}
-                    </Typography>
+                    <Typography variant="body2">✔ Assignments: {assignments}</Typography>
+                    <Typography variant="body2">✔ Participation: {participation}</Typography>
                   </Box>
                 </Box>
               </CardContent>
