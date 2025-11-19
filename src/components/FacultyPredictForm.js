@@ -95,7 +95,7 @@ export default function FacultyPredictForm({ onResult }) {
       const token = localStorage.getItem("authToken");
 
       const res = await axios.post(
-        "http://127.0.0.1:5001/faculty/predict",
+        "http://localhost:5001/faculty/predict",
         payload,
         {
           headers: {

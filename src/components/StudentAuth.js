@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-import SchoolIcon from '@mui/icons-material/School';
-import authBg from '../images/bg_5.jpg';
-=======
 import React, { useState } from "react";
 import SchoolIcon from "@mui/icons-material/School";
-import authBg from "../images/bg_5.png";
->>>>>>> 618287cb87e0ccadaec87fa42172fd9a85782994
+import authBg from "../images/bg_5.jpg";
 import {
     Box,
     Typography,
@@ -33,7 +27,7 @@ import {
 } from "@mui/icons-material";
 import axios from "axios";
 
-const API = "http://127.0.0.1:5001";   // Backend SQLite API
+const API = process.env.REACT_APP_API || "http://localhost:5001";
 
 function TabPanel({ children, value, index }) {
     return value === index && <Box sx={{ p: 3 }}>{children}</Box>;
@@ -183,11 +177,7 @@ export default function StudentAuth({ onLogin }) {
                     {/* LEFT */}
                     <Grid item xs={12} md={6}>
                         <Fade in timeout={800}>
-<<<<<<< HEAD
-                            <Box sx={{ color: "white", textAlign: { xs: "center", md: "left" } }}>
-=======
-                            <Box sx={{ color: "black" }}>
->>>>>>> 618287cb87e0ccadaec87fa42172fd9a85782994
+                            <Box sx={{ color: "white" }}>
                                 <SchoolIcon sx={{ fontSize: 70, mb: 1 }} />
                                 <Typography variant="h3" fontWeight="bold">
                                     AI Student Performance Predictor
