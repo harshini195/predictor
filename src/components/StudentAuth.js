@@ -1,12 +1,7 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-import SchoolIcon from '@mui/icons-material/School';
-import authBg from '../images/bg_5.jpg';
-=======
 import React, { useState } from "react";
 import SchoolIcon from "@mui/icons-material/School";
-import authBg from "../images/bg_5.png";
->>>>>>> 618287cb87e0ccadaec87fa42172fd9a85782994
+import authBg from "../images/bg_5.jpg";
+
 import {
     Box,
     Typography,
@@ -17,23 +12,14 @@ import {
     Tabs,
     Tab,
     Alert,
-    InputAdornment,
-    IconButton,
     Grid,
     CircularProgress,
     Fade,
 } from "@mui/material";
-import {
-    Visibility,
-    VisibilityOff,
-    Person,
-    Email,
-    Lock,
-    Badge,
-} from "@mui/icons-material";
+
 import axios from "axios";
 
-const API = "http://127.0.0.1:5001";   // Backend SQLite API
+const API = "http://127.0.0.1:5001"; // Backend SQLite API
 
 function TabPanel({ children, value, index }) {
     return value === index && <Box sx={{ p: 3 }}>{children}</Box>;
@@ -42,9 +28,8 @@ function TabPanel({ children, value, index }) {
 export default function StudentAuth({ onLogin }) {
     const [userType, setUserType] = useState("");
     const [tabValue, setTabValue] = useState(0);
-
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showPassword] = useState(false);
+    const [showConfirmPassword] = useState(false);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -97,7 +82,7 @@ export default function StudentAuth({ onLogin }) {
     };
 
     // ----------------------------------------------------
-    // SUBMIT HANDLER (LOGIN + SIGNUP)
+    // SUBMIT HANDLER
     // ----------------------------------------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -107,9 +92,7 @@ export default function StudentAuth({ onLogin }) {
         setErrors({});
 
         try {
-            // ---------------------------
             // LOGIN
-            // ---------------------------
             if (tabValue === 0) {
                 const res = await axios.post(`${API}/login`, {
                     email: formData.email.toLowerCase(),
@@ -118,7 +101,6 @@ export default function StudentAuth({ onLogin }) {
 
                 const user = res.data;
 
-                // Store auth info
                 localStorage.setItem("authToken", user.token);
                 localStorage.setItem("authUser", JSON.stringify(user));
 
@@ -128,9 +110,7 @@ export default function StudentAuth({ onLogin }) {
                 onLogin(user);
             }
 
-            // ---------------------------
             // SIGNUP
-            // ---------------------------
             else {
                 const payload = {
                     name: formData.name,
@@ -183,17 +163,13 @@ export default function StudentAuth({ onLogin }) {
                     {/* LEFT */}
                     <Grid item xs={12} md={6}>
                         <Fade in timeout={800}>
-<<<<<<< HEAD
-                            <Box sx={{ color: "white", textAlign: { xs: "center", md: "left" } }}>
-=======
                             <Box sx={{ color: "black" }}>
->>>>>>> 618287cb87e0ccadaec87fa42172fd9a85782994
                                 <SchoolIcon sx={{ fontSize: 70, mb: 1 }} />
                                 <Typography variant="h3" fontWeight="bold">
                                     AI Student Performance Predictor
                                 </Typography>
                                 <Typography variant="h6" sx={{ mt: 1, opacity: 0.8 }}>
-                                    Predict, analyse, and improve academic success.
+                                    Predict, analyse, and improve academic success
                                 </Typography>
                             </Box>
                         </Fade>
@@ -213,25 +189,16 @@ export default function StudentAuth({ onLogin }) {
                                             borderRadius: 5,
                                             boxShadow: "0px 10px 30px rgba(0,0,0,0.15)",
                                             minHeight: 30,
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "center",
-                                            justifyContent: "center",
                                         }}
                                     >
                                         <Typography
                                             variant="h4"
-                                            sx={{
-                                                mb: 4,
-                                                fontWeight: 700,
-                                                letterSpacing: "0.5px",
-                                            }}
+                                            sx={{ mb: 4, fontWeight: 700 }}
                                         >
                                             Choose your role
                                         </Typography>
 
                                         <Box sx={{ display: "flex", gap: 4 }}>
-                                            {/* STUDENT BUTTON */}
                                             <Button
                                                 variant="contained"
                                                 sx={{
@@ -239,19 +206,14 @@ export default function StudentAuth({ onLogin }) {
                                                     py: 5,
                                                     fontSize: "1.2rem",
                                                     borderRadius: 4,
-                                                    background: "linear-gradient(135deg, #4E73DF, #1CC7D0)",
-                                                    boxShadow: "0px 4px 16px rgba(0,0,0,0.2)",
-                                                    "&:hover": {
-                                                        background: "linear-gradient(135deg, #3B5DC4, #17AFC0)",
-                                                        boxShadow: "0px 6px 22px rgba(0,0,0,0.25)",
-                                                    },
+                                                    background:
+                                                        "linear-gradient(135deg, #4E73DF, #1CC7D0)",
                                                 }}
                                                 onClick={() => setUserType("student")}
                                             >
                                                 STUDENT
                                             </Button>
 
-                                            {/* FACULTY BUTTON */}
                                             <Button
                                                 variant="contained"
                                                 sx={{
@@ -259,12 +221,8 @@ export default function StudentAuth({ onLogin }) {
                                                     py: 5,
                                                     fontSize: "1.2rem",
                                                     borderRadius: 4,
-                                                    background: "linear-gradient(135deg, #4E73DF, #1CC7D0)",
-                                                    boxShadow: "0px 4px 16px rgba(0,0,0,0.2)",
-                                                    "&:hover": {
-                                                        background: "linear-gradient(135deg, #3B5DC4, #17AFC0)",
-                                                        boxShadow: "0px 6px 22px rgba(0,0,0,0.25)",
-                                                    },
+                                                    background:
+                                                        "linear-gradient(135deg, #4E73DF, #1CC7D0)",
                                                 }}
                                                 onClick={() => setUserType("faculty")}
                                             >
@@ -274,21 +232,24 @@ export default function StudentAuth({ onLogin }) {
                                     </Box>
                                 )}
 
-
                                 {/* FORM SECTION */}
                                 {userType && (
                                     <>
                                         {/* Header */}
                                         <Box
                                             sx={{
-                                                background: "linear-gradient(135deg,#4E73DF,#1CC7D0)",
+                                                background:
+                                                    "linear-gradient(135deg,#4E73DF,#1CC7D0)",
                                                 p: 3,
                                                 color: "white",
                                                 textAlign: "center",
                                             }}
                                         >
                                             <Typography variant="h5" fontWeight={600}>
-                                                {tabValue === 0 ? "Login" : "Create Account"} ({userType})
+                                                {tabValue === 0
+                                                    ? "Login"
+                                                    : "Create Account"}{" "}
+                                                ({userType})
                                             </Typography>
                                         </Box>
 
@@ -308,13 +269,14 @@ export default function StudentAuth({ onLogin }) {
                                                 {errors.general}
                                             </Alert>
                                         )}
+
                                         {success && (
                                             <Alert severity="success" sx={{ m: 2 }}>
                                                 Success!
                                             </Alert>
                                         )}
 
-                                        {/* LOGIN TAB */}
+                                        {/* LOGIN */}
                                         <TabPanel value={tabValue} index={0}>
                                             <form onSubmit={handleSubmit}>
                                                 <TextField
@@ -338,12 +300,16 @@ export default function StudentAuth({ onLogin }) {
                                                     variant="contained"
                                                     disabled={loading}
                                                 >
-                                                    {loading ? <CircularProgress size={24} /> : "Log In"}
+                                                    {loading ? (
+                                                        <CircularProgress size={24} />
+                                                    ) : (
+                                                        "Log In"
+                                                    )}
                                                 </Button>
                                             </form>
                                         </TabPanel>
 
-                                        {/* SIGNUP TAB */}
+                                        {/* SIGNUP */}
                                         <TabPanel value={tabValue} index={1}>
                                             <form onSubmit={handleSubmit}>
                                                 <TextField
@@ -360,7 +326,6 @@ export default function StudentAuth({ onLogin }) {
                                                     sx={{ mb: 2 }}
                                                 />
 
-                                                {/* Student-only fields */}
                                                 {userType === "student" && (
                                                     <>
                                                         <TextField
