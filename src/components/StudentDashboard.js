@@ -60,29 +60,29 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
 
   const performanceScore = Math.round(
     attendance * 0.30 +
-      studyHours * 8 * 0.20 +
-      (marks / 2.5) * 0.25 +
-      assignments * 10 * 0.10 +
-      participationWeight * 0.15
+    studyHours * 8 * 0.20 +
+    (marks / 2.5) * 0.25 +
+    assignments * 10 * 0.10 +
+    participationWeight * 0.15
   );
 
   const scoreLabel =
     performanceScore >= 80
       ? "Excellent"
       : performanceScore >= 60
-      ? "Good"
-      : performanceScore >= 40
-      ? "Average"
-      : "Needs Improvement";
+        ? "Good"
+        : performanceScore >= 40
+          ? "Average"
+          : "Needs Improvement";
 
   const RiskColor =
     performanceScore >= 80
       ? "success"
       : performanceScore >= 60
-      ? "info"
-      : performanceScore >= 40
-      ? "warning"
-      : "error";
+        ? "info"
+        : performanceScore >= 40
+          ? "warning"
+          : "error";
 
   // PROFESSIONAL PIE DATA
   const total = attendance + studyHours * 8 + marks / 2.5 + assignments * 16.6;
@@ -135,7 +135,8 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   // EXPORT AS PDF (unchanged)
   // -------------------------------------------------------
   const generateReport = async () => {
-    const element = document.getElementById("dashboard-root");
+    const element = document.getElementById("pdf-section"); // ONLY THIS PART
+
     if (!element) {
       alert("Dashboard element not found for export.");
       return;
@@ -181,317 +182,305 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   return (
     <Box id="dashboard-root" sx={{ p: 3, background: "#ffffff" }}>
 
-      {/* HEADER */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-        <Typography variant="h4">Student Dashboard</Typography>
-        <Button variant="contained" onClick={generateReport} sx={{ background: "#1CC7D0" }}>
-          Export PDF
-        </Button>
-      </Box>
+      {/* START OF PDF EXPORT SECTION */}
+      <Box id="pdf-section">
 
-      {/* =====================================================
-         GOAL SETTING (UNCHANGED)
-      ===================================================== */}
-      <Fade in timeout={700}>
-        <Card
-          sx={{
-            mb: 3,
-            background: "linear-gradient(135deg,#4E73DF,#1CC7D0)",
-            color: "white",
-          }}
-        >
-          <CardContent>
-            <Typography variant="h5" sx={{ mb: 1 }}>
-              Goal Setting & Achievement
-            </Typography>
+        {/* HEADER */}
+        <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <Typography variant="h4">Student Dashboard</Typography>
+          <Button variant="contained" onClick={generateReport} sx={{ background: "#1CC7D0" }}>
+            Export PDF
+          </Button>
+        </Box>
+        {/* =====================================================
+   GOAL SETTING — CLEAN CARDS + AUTO HIDE TASKS
+===================================================== */}
+        <Fade in timeout={700}>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
 
-            {(() => {
-              const goals = [];
+            {/* ATTENDANCE GOAL */}
+            <Grid item xs={12} md={6}>
+              <Card
+                sx={{
+                  background: "linear-gradient(135deg,#4E73DF,#1CC7D0)",
+                  color: "white",
+                  borderRadius: 3,
+                  p: 1,
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" fontWeight="bold">
+                    Attendance Goal
+                  </Typography>
 
-              if (attendance < 75) {
-                goals.push({
-                  goal: "Increase attendance to 75%",
-                  progress: attendance,
-                  target: 75,
-                  tasks: [
-                    "Attend all classes this week",
-                    "Avoid unnecessary leave",
-                    "Check attendance daily",
-                  ],
-                });
-              }
-
-              if (studyHours < 2) {
-                goals.push({
-                  goal: "Study for at least 2 hours/day",
-                  progress: studyHours,
-                  target: 2,
-                  tasks: [
-                    "Create a study plan",
-                    "Use Pomodoro method",
-                    "Study one subject per day",
-                  ],
-                });
-              }
-
-              if (marks < 150) {
-                goals.push({
-                  goal: "Achieve 150+ internal marks",
-                  progress: marks,
-                  target: 150,
-                  tasks: [
-                    "Revise weak subjects",
-                    "Attend remedial classes",
-                    "Complete question bank",
-                  ],
-                });
-              }
-
-              if (assignments < 6) {
-                goals.push({
-                  goal: "Submit all assignments",
-                  progress: assignments,
-                  target: 6,
-                  tasks: [
-                    "Finish pending assignments",
-                    "Submit before deadline",
-                    "Clarify doubts with faculty",
-                  ],
-                });
-              }
-
-              if (participation !== "High") {
-                const levels = { Low: 1, Medium: 2, High: 3 };
-                goals.push({
-                  goal: "Increase class participation",
-                  progress: levels[participation],
-                  target: 3,
-                  tasks: [
-                    "Ask questions in class",
-                    "Join group discussions",
-                    "Volunteer in activities",
-                  ],
-                });
-              }
-
-              if (goals.length === 0) {
-                return (
-                  <Alert
-                    severity="success"
-                    sx={{ mt: 2, bgcolor: "rgba(255,255,255,0.15)", color: "white" }}
-                  >
-                    🎉 All goals achieved! Excellent work!
-                  </Alert>
-                );
-              }
-
-              return goals.map((g, i) => {
-                const pct = Math.min(Math.round((g.progress / g.target) * 100), 100);
-
-                return (
-                  <Card
-                    key={i}
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min((attendance / 75) * 100, 100)}
                     sx={{
-                      p: 2,
-                      mb: 2,
-                      mt: 2,
-                      bgcolor: "rgba(255,255,255,0.15)",
-                      color: "white",
+                      mt: 1,
+                      height: 10,
+                      borderRadius: 5,
+                      bgcolor: "rgba(255,255,255,0.3)",
+                      "& .MuiLinearProgress-bar": { bgcolor: "white" },
                     }}
-                  >
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {g.goal}
+                  />
+
+                  {/* AUTO MESSAGE */}
+                  {attendance >= 75 ? (
+                    <Typography sx={{ mt: 1, fontWeight: "bold" }}>
+                      🎉 Goal Achieved! Great job!
                     </Typography>
-
-                    <LinearProgress
-                      variant="determinate"
-                      value={pct}
-                      sx={{
-                        mt: 1,
-                        height: 10,
-                        borderRadius: 5,
-                        bgcolor: "rgba(255,255,255,0.3)",
-                        "& .MuiLinearProgress-bar": { bgcolor: "white" },
-                      }}
-                    />
-
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      Progress: {pct}%
+                  ) : (
+                    <Typography sx={{ mt: 1 }}>
+                      Current: {attendance}% / Target: 75%
                     </Typography>
+                  )}
 
-                    <Box sx={{ mt: 1 }}>
-                      {g.tasks.map((t, idx) => (
+                  {/* SHOW TASKS ONLY IF GOAL NOT REACHED */}
+                  {attendance < 75 && (
+                    <Box sx={{ mt: 2 }}>
+                      {[
+                        "Attend all classes this week",
+                        "Avoid unnecessary leave",
+                        "Check attendance daily",
+                      ].map((t, idx) => (
                         <Chip
                           key={idx}
                           label={t}
                           variant="outlined"
-                          sx={{ mr: 1, mb: 1, color: "white", borderColor: "white" }}
+                          sx={{
+                            mr: 1,
+                            mb: 1,
+                            color: "white",
+                            borderColor: "white",
+                            fontSize: "0.75rem",
+                          }}
                         />
                       ))}
                     </Box>
-
-                    {pct >= 100 && (
-                      <Alert
-                        severity="success"
-                        sx={{ mt: 2, bgcolor: "rgba(0,0,0,0.2)", color: "white" }}
-                      >
-                        🎯 Goal Achieved!
-                      </Alert>
-                    )}
-                  </Card>
-                );
-              });
-            })()}
-          </CardContent>
-        </Card>
-      </Fade>
-
-      {/* =====================================================
-         TOP METRICS (UNCHANGED)
-      ===================================================== */}
-      <Grid container spacing={3} sx={{ mt: 1, mb: 3 }}>
-        {[
-          { label: "Attendance", value: `${attendance}%`, icon: <School />, color: "success" },
-          { label: "Study Hours/day", value: studyHours, icon: <Schedule />, color: "info" },
-          { label: "Internal Marks", value: `${marks}/250`, icon: <Assessment />, color: "warning" },
-          { label: "Assignments", value: assignments, icon: <QueryStats />, color: "secondary" },
-        ].map((item, i) => (
-          <Grid item xs={12} sm={6} md={3} key={i}>
-            <Grow in timeout={600 + i * 200}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                    <Avatar sx={{ bgcolor: `${item.color}.main`, mr: 2 }}>
-                      {item.icon}
-                    </Avatar>
-                    <Typography variant="h6">{item.label}</Typography>
-                  </Box>
-                  <Typography variant="h4" color={`${item.color}.main`}>
-                    {item.value}
-                  </Typography>
+                  )}
                 </CardContent>
               </Card>
-            </Grow>
-          </Grid>
-        ))}
-      </Grid>
+            </Grid>
 
-      {/* =====================================================
+            {/* ASSIGNMENTS GOAL */}
+            <Grid item xs={12} md={6}>
+              <Card
+                sx={{
+                  background: "linear-gradient(135deg,#4E73DF,#1CC7D0)",
+                  color: "white",
+                  borderRadius: 3,
+                  p: 1,
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" fontWeight="bold">
+                    Assignments Goal
+                  </Typography>
+
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min((assignments / 6) * 100, 100)}
+                    sx={{
+                      mt: 1,
+                      height: 10,
+                      borderRadius: 5,
+                      bgcolor: "rgba(255,255,255,0.3)",
+                      "& .MuiLinearProgress-bar": { bgcolor: "white" },
+                    }}
+                  />
+
+                  {/* AUTO MESSAGE */}
+                  {assignments >= 6 ? (
+                    <Typography sx={{ mt: 1, fontWeight: "bold" }}>
+                      🎉 All assignments submitted!
+                    </Typography>
+                  ) : (
+                    <Typography sx={{ mt: 1 }}>
+                      Submitted: {assignments} / 6
+                    </Typography>
+                  )}
+
+                  {/* TASKS ONLY IF NOT REACHED */}
+                  {assignments < 6 && (
+                    <Box sx={{ mt: 2 }}>
+                      {[
+                        "Finish pending assignments",
+                        "Submit before deadline",
+                        "Clarify doubts with faculty",
+                      ].map((t, idx) => (
+                        <Chip
+                          key={idx}
+                          label={t}
+                          variant="outlined"
+                          sx={{
+                            mr: 1,
+                            mb: 1,
+                            color: "white",
+                            borderColor: "white",
+                            fontSize: "0.75rem",
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+
+          </Grid>
+        </Fade>
+
+
+        {/* =====================================================
+         TOP METRICS (UNCHANGED)
+      ===================================================== */}
+        <Grid container spacing={3} sx={{ mt: 1, mb: 3 }}>
+          {[
+            { label: "Attendance", value: `${attendance}%`, icon: <School />, color: "success" },
+            { label: "Study Hours/day", value: studyHours, icon: <Schedule />, color: "info" },
+            { label: "Internal Marks", value: `${marks}/250`, icon: <Assessment />, color: "warning" },
+            { label: "Assignments", value: assignments, icon: <QueryStats />, color: "secondary" },
+          ].map((item, i) => (
+            <Grid item xs={12} sm={6} md={3} key={i}>
+              <Grow in timeout={600 + i * 200}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                      <Avatar sx={{ bgcolor: `${item.color}.main`, mr: 2 }}>
+                        {item.icon}
+                      </Avatar>
+                      <Typography variant="h6">{item.label}</Typography>
+                    </Box>
+                    <Typography variant="h4" color={`${item.color}.main`}>
+                      {item.value}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grow>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* =====================================================
          ★★★ PROFESSIONAL PIE CHART ★★★
       ===================================================== */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 1, fontWeight: "bold" }}>
-                Performance Breakdown
-              </Typography>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: "bold" }}>
+                  Performance Breakdown
+                </Typography>
 
-              <ResponsiveContainer width="100%" height={300}>
-                <RePieChart>
-                  <Tooltip formatter={(v, n) => [`${v}`, `${n}`]} />
+                <ResponsiveContainer width="100%" height={300}>
+                  <RePieChart>
+                    <Tooltip formatter={(v, n) => [`${v}`, `${n}`]} />
 
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={110}
-                    innerRadius={50}
-                    paddingAngle={4}
-                    stroke={PIE_BORDER_COLOR}
-                    strokeWidth={4}
-                    label={({ name, pct }) =>
-                      `${name}: ${pct.toFixed(1)}%`
-                    }
-                    labelStyle={{
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={index} fill={PIE_COLORS[index]} />
-                    ))}
-                  </Pie>
-                </RePieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* -----------------------------------------------------
-            AI RECOMMENDATIONS — UNCHANGED
-        ------------------------------------------------------ */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">AI Recommendations</Typography>
-              {insights.rec.map((r, i) => (
-                <Alert key={i} severity="info" sx={{ mb: 1 }}>
-                  {r}
-                </Alert>
-              ))}
-
-              <Divider sx={{ my: 1 }} />
-
-              <Typography variant="subtitle2">Alerts</Typography>
-
-              {insights.alerts.length > 0 ? (
-                insights.alerts.map((a, i) => (
-                  <Alert key={i} severity="warning" sx={{ mb: 1 }}>
-                    {a}
-                  </Alert>
-                ))
-              ) : (
-                <Alert severity="success">No active alerts</Alert>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* =====================================================
-         SUBJECT HEATMAP (UNCHANGED)
-      ===================================================== */}
-      <Grid container spacing={3} sx={{ mt: 3 }}>
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Subject-wise Heatmap</Typography>
-
-              <Grid container spacing={2} sx={{ mt: 1, justifyContent: "center" }}>
-                {subjectNames.map((subj, idx) => (
-                  <Grid item xs={6} sm={4} md={2} key={subj}>
-                    <Box
-                      sx={{
-                        p: 2,
-                        m: 1,
-                        borderRadius: 3,
-                        bgcolor: subjectHeatColors[idx],
-                        color: "white",
-                        textAlign: "center",
-                        width: "100%",
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={110}
+                      innerRadius={50}
+                      paddingAngle={4}
+                      stroke={PIE_BORDER_COLOR}
+                      strokeWidth={4}
+                      label={({ name, pct }) =>
+                        `${name}: ${pct.toFixed(1)}%`
+                      }
+                      labelStyle={{
+                        fontSize: "12px",
+                        fontWeight: "bold",
                       }}
                     >
-                      <Typography variant="subtitle2">{subj}</Typography>
-                      <Typography variant="h6">{subjectScores[idx]}</Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={PIE_COLORS[index]} />
+                      ))}
+                    </Pie>
+                  </RePieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
 
-      {/* SIMULATOR */}
+          {/* -----------------------------------------------------
+            AI RECOMMENDATIONS — UNCHANGED
+        ------------------------------------------------------ */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">AI Recommendations</Typography>
+                {insights.rec.map((r, i) => (
+                  <Alert key={i} severity="info" sx={{ mb: 1 }}>
+                    {r}
+                  </Alert>
+                ))}
+
+                <Divider sx={{ my: 1 }} />
+
+                <Typography variant="subtitle2">Alerts</Typography>
+
+                {insights.alerts.length > 0 ? (
+                  insights.alerts.map((a, i) => (
+                    <Alert key={i} severity="warning" sx={{ mb: 1 }}>
+                      {a}
+                    </Alert>
+                  ))
+                ) : (
+                  <Alert severity="success">No active alerts</Alert>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+                {/* =====================================================
+         SUBJECT HEATMAP (UNCHANGED)
+      ===================================================== */}
+        <Grid container spacing={3} sx={{ mt: 3 }}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">Subject-wise Heatmap</Typography>
+
+                <Grid container spacing={2} sx={{ mt: 1, justifyContent: "center" }}>
+                  {subjectNames.map((subj, idx) => (
+                    <Grid item xs={6} sm={4} md={2} key={subj}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          m: 1,
+                          borderRadius: 3,
+                          bgcolor: subjectHeatColors[idx],
+                          color: "white",
+                          textAlign: "center",
+                          width: "100%",
+                        }}
+                      >
+                        <Typography variant="subtitle2">{subj}</Typography>
+                        <Typography variant="h6">{subjectScores[idx]}</Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>  {/* ✅ Correct heatmap closing */}
+
+      </Box> {/* ✅ END PDF EXPORT SECTION */}
+
+
+      {/* SIMULATOR — NOT INCLUDED IN PDF */}
       <PredictionSimulator
         initial={{ attendance, studyHours, internalTotal: marks, assignments, participation }}
         onSimulate={(data) => setSimResult(data)}
       />
 
-      {/* RECENT PREDICTIONS */}
+      {/* RECENT PREDICTIONS — NOT INCLUDED IN PDF */}
       <Card sx={{ mt: 3 }}>
         <CardContent>
           <Typography variant="h6">Recent Predictions</Typography>
@@ -501,7 +490,6 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           {predictionHistory.slice(0, 5).map((p, i) => (
             <Box key={i} sx={{ display: "flex", justifyContent: "space-between", my: 1 }}>
               <Typography>{new Date(p.date).toLocaleString()}</Typography>
-
               <Typography
                 color={p.prediction === "Pass" ? "success.main" : "error.main"}
                 fontWeight="bold"
@@ -512,7 +500,6 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           ))}
         </CardContent>
       </Card>
-
-    </Box>
+    </Box> 
   );
 }

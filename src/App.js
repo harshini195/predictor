@@ -197,7 +197,7 @@ function AppContent({
               <StudentAuth
                 onLogin={(userData) => {
                   handleLogin(userData);
-                  navigate(userData.role === "faculty" ? "/faculty-dashboard" : "/dashboard");
+                  navigate(userData.role === "faculty" ? "/faculty-dashboard" : "/predict");
                 }}
               />
             }

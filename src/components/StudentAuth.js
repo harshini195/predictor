@@ -136,13 +136,15 @@ export default function StudentAuth({ onLogin }) {
                 maxWidth="sm"
                 sx={{
                     mr: 0,
-                    textAlign: "right",      // RIGHT ALIGN CONTENT
+                    textAlign: "right",
+                    right: "40px",      // ← moves the whole login UI left
+                    width: "85%",        // RIGHT ALIGN CONTENT
                 }}
             >
                 <Grid item xs={12}>
                     <Fade in timeout={800}>
                         <Box sx={{ color: "black" }}>
-                            <SchoolIcon sx={{ fontSize: 70, mb: 1 }} />
+                            <SchoolIcon sx={{ fontSize: 70, mb: 1, ml: -6 }} />
                             <Typography variant="h3" fontWeight="bold">
                                 AI Student Performance Predictor
                             </Typography>
@@ -155,7 +157,7 @@ export default function StudentAuth({ onLogin }) {
                     {/* ---------- CHOOSE ROLE ---------- */}
                     {!userType && (
                         <Fade in timeout={1000}>
-                            <Paper sx={{ borderRadius: 4, overflow: "hidden", mt: 4 }}>
+                            <Paper sx={{ borderRadius: 4, overflow: "hidden", mt: 4, ml: -6 }}>
                                 <Box
                                     sx={{
                                         p: 6,

@@ -18,12 +18,6 @@ import {
 import { Insights, PlayArrow, Tune } from "@mui/icons-material";
 import axios from "axios";
 
-/**
- * Premium Prediction Simulator (Style C)
- * Props:
- *   - initial: { attendance, studyHours, internalTotal, assignments, participation }
- *   - onSimulate: optional callback receiving { prediction, confidence, inputs }
- */
 export default function PredictionSimulator({ initial = {}, onSimulate = null }) {
   const [attendance, setAttendance] = useState(initial.attendance ?? 75);
   const [studyHours, setStudyHours] = useState(initial.studyHours ?? 2.5);
@@ -90,10 +84,83 @@ export default function PredictionSimulator({ initial = {}, onSimulate = null })
 
   // auto-simulate on mount with initial values
   useEffect(() => {
-    runPredict();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+   const runPredict = async () => {
+  setLoading(true);
+  setError(null);
+  setPrediction(null);
+  setConfidence(null);
 
+  const payload = {
+    attendance: Number(attendance),
+    studyHours: Number(studyHours),
+    internalTotal: Number(internalTotal),
+    assignments: Number(assignments),
+    participation: participation,
+  };
+
+  const token = localStorage.getItem("authToken");
+
+  try {
+    const res = await axios.post(
+      "http://localhost:5001/predict",
+      payload,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 7000,
+      }
+    );
+
+    // SAME FORMAT as PredictorForm
+    setPrediction(res.data.prediction);
+    setConfidence((res.data.confidence * 100).toFixed(1));
+
+    if (onSimulate)
+      onSimulate({
+        prediction: res.data.prediction,
+        confidence: res.data.confidence,
+        inputs: payload,
+      });
+
+  } catch (err) {
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      setError("Session expired. Please login again.");
+    } else {
+      setError("Backend unavailable — using fallback heuristic.");
+
+      // SAME fallback threshold as PredictorForm
+      const pred = perfScore >= 65 ? "Pass" : "Fail";
+      const conf = Math.min(0.95, Math.max(0.45, perfScore / 100));
+
+      setPrediction(pred);
+      setConfidence((conf * 100).toFixed(1));
+
+      if (onSimulate)
+        onSimulate({
+          prediction: pred,
+          confidence: conf,
+          inputs: payload,
+        });
+    }
+  }
+
+  setLoading(false);
+};}, []);
+// Animation styles
+const styles = `
+@keyframes fadePop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pass-animate {
+  animation: fadePop 0.45s ease-out forwards;
+  color: #2ecc71;
+}
+.fail-animate {
+  animation: fadePop 0.45s ease-out forwards;
+  color: #e74c3c;
+}
+`;
   return (
     <Card elevation={8} sx={{
       mt: 3,
@@ -116,7 +183,6 @@ export default function PredictionSimulator({ initial = {}, onSimulate = null })
           </Grid>
 
           <Grid item xs={12} md={4} sx={{ textAlign: { xs: "left", md: "right" } }}>
-            <Chip label={`Score preview: ${perfScore}`} color={colorForScore(perfScore)} sx={{ mr: 1 }} />
             <Button
               variant="contained"
               startIcon={<PlayArrow />}
@@ -152,7 +218,7 @@ export default function PredictionSimulator({ initial = {}, onSimulate = null })
                 onChange={(e, v) => setStudyHours(Math.round(v * 10) / 10)}
                 step={0.1}
                 min={0}
-                max={8}
+                max={6}
                 valueLabelDisplay="on"
                 sx={{ mt: 1 }}
               />
@@ -163,7 +229,7 @@ export default function PredictionSimulator({ initial = {}, onSimulate = null })
                 onChange={(e, v) => setAssignments(Math.round(v))}
                 step={1}
                 min={0}
-                max={10}
+                max={6}
                 valueLabelDisplay="on"
                 sx={{ mt: 1 }}
               />
@@ -217,11 +283,17 @@ export default function PredictionSimulator({ initial = {}, onSimulate = null })
                   <Typography variant="caption" color="text.secondary">0</Typography>
                   <Typography variant="caption" color="text.secondary">100</Typography>
                 </Stack>
+<Box component="style">{styles}</Box>
 
                 <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-                  <Typography variant="h6" sx={{ m: 0 }}>
-                    {prediction ? `Predicted: ${prediction}` : "No prediction yet"}
-                  </Typography>
+                  <Typography
+  variant="h5"
+  className={prediction ? (prediction === "Pass" ? "pass-animate" : "fail-animate") : ""}
+  sx={{ m: 0 }}
+>
+  {prediction ? `Predicted: ${prediction}` : "No prediction yet"}
+</Typography>
+
 
                   <Typography variant="body2" color="text.secondary">
                     {confidence ? `Confidence: ${Math.round(confidence)}%` : ""}
