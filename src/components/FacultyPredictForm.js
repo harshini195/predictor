@@ -38,6 +38,7 @@ export default function FacultyPredictForm({ onResult }) {
   const [internalTotal, setInternalTotal] = useState(150);
   const [assignments, setAssignments] = useState(3);
   const [participation, setParticipation] = useState("Medium");
+  const [mode, setMode] = useState("slider"); // "slider" or "manual"
 
   // Output
   const [loading, setLoading] = useState(false);
@@ -138,13 +139,84 @@ export default function FacultyPredictForm({ onResult }) {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Faculty — Ad-hoc Performance Predictor
-      </Typography>
+  Faculty — Performance Predictor
+</Typography>
+
+{/* Mode Switch */}
+<Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+  <Button
+    variant={mode === "slider" ? "contained" : "outlined"}
+    onClick={() => setMode("slider")}
+  >
+    Slider Mode
+  </Button>
+  <Button
+    variant={mode === "manual" ? "contained" : "outlined"}
+    onClick={() => setMode("manual")}
+  >
+    Manual Input
+  </Button>
+</Stack>
+
 
       <Grid container spacing={3}>
-        {/* Left Input Panel */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, borderRadius: 3 }}>
+        {/* LEFT INPUT PANEL */}
+<Grid item xs={12} md={6}>
+  <Paper sx={{ p: 3, borderRadius: 3 }}>
+    {mode === "slider" && (
+  <Stack spacing={3}>
+    {/* your entire slider UI goes here (unchanged) */}
+  </Stack>
+)}
+
+{mode === "manual" && (
+  <Stack spacing={3}>
+    <TextField
+      fullWidth
+      type="number"
+      label="Attendance (%)"
+      value={attendance}
+      onChange={(e) => setAttendance(Number(e.target.value))}
+    />
+
+    <TextField
+      fullWidth
+      type="number"
+      label="Study Hours / Day"
+      value={studyHours}
+      onChange={(e) => setStudyHours(Number(e.target.value))}
+    />
+
+    <TextField
+      fullWidth
+      type="number"
+      label="Internal Marks (out of 250)"
+      value={internalTotal}
+      onChange={(e) => setInternalTotal(Number(e.target.value))}
+    />
+
+    <TextField
+      fullWidth
+      type="number"
+      label="Assignments Submitted"
+      value={assignments}
+      onChange={(e) => setAssignments(Number(e.target.value))}
+    />
+
+    <TextField
+      select
+      fullWidth
+      label="Participation"
+      value={participation}
+      onChange={(e) => setParticipation(e.target.value)}
+    >
+      <MenuItem value="Low">Low</MenuItem>
+      <MenuItem value="Medium">Medium</MenuItem>
+      <MenuItem value="High">High</MenuItem>
+    </TextField>
+  </Stack>
+)}
+
             <Stack spacing={3}>
               {/* Attendance */}
               <Box>

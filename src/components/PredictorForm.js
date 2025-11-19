@@ -70,14 +70,30 @@ export default function PredictorForm({ savePrediction }) {
 
   // Auto-update total marks
   useEffect(() => {
-    if (marksMode === "individual") {
-      const total = Object.values(subjectMarks)
-        .map((v) => Number(v) || 0)
-        .reduce((a, b) => a + b, 0);
+  const user = JSON.parse(localStorage.getItem("loggedStudent"));
+  if (!user) return;
 
-      setForm((prev) => ({ ...prev, internalTotal: total }));
-    }
-  }, [subjectMarks, marksMode]);
+  axios.get("http://localhost:5001/get-settings", {
+    headers: { Email: user.email }
+  })
+  .then(res => {
+    if (!res.data.attendance) return; // no saved values yet
+
+    setForm(prev => ({
+      ...prev,
+      attendance: res.data.attendance,
+      studyHours: res.data.studyHours,
+      internalTotal: res.data.internalTotal,
+      assignments: res.data.assignments,
+      participation: res.data.participation,
+    }));
+
+    setMarksMode(res.data.marksMode || "total");
+    setSubjectMarks(res.data.subjectMarks || {});
+  })
+}, []);
+
+
 
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
@@ -111,37 +127,46 @@ export default function PredictorForm({ savePrediction }) {
 
   // Main prediction
   const handlePredict = async () => {
-    if (!validate()) {
-      setError("Please fill all fields.");
-      return;
-    }
+  if (!validate()) {
+    setError("Please fill all fields.");
+    return;
+  }
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    const token = localStorage.getItem("authToken");
+  const token = localStorage.getItem("authToken");
 
-    try {
-      const totalMarks =
-        marksMode === "total"
-          ? Number(form.internalTotal)
-          : Object.values(subjectMarks)
+  // ⭐ ADD THIS HERE
+  const user = JSON.parse(localStorage.getItem("loggedStudent"));
+
+  try {
+    const totalMarks =
+      marksMode === "total"
+        ? Number(form.internalTotal)
+        : Object.values(subjectMarks)
             .map((v) => Number(v))
             .reduce((a, b) => a + b, 0);
+const user = JSON.parse(localStorage.getItem("loggedStudent"));
 
-      const res = await axios.post(
-        "http://localhost:5001/predict",
-        {
-          attendance: Number(form.attendance),
-          studyHours: Number(form.studyHours),
-          internalTotal: totalMarks,
-          assignments: Number(form.assignments),
-          participation: form.participation,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+    const res = await axios.post(
+      "http://localhost:5001/predict",
+      {
+        attendance: Number(form.attendance),
+        studyHours: Number(form.studyHours),
+        internalTotal: totalMarks,
+        assignments: Number(form.assignments),
+        participation: form.participation,
+        marksMode,
+        subjectMarks,
+      },
+      {
+        headers: {
+  Authorization: `Bearer ${token}`,
+  Email: user?.email,                // ⭐ ADD THIS
+}
+      }
+    );
 
       setResult(res.data.prediction);
       setConfidence((res.data.confidence * 100).toFixed(1));

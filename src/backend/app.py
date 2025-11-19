@@ -6,6 +6,8 @@ import jwt
 import datetime
 import numpy as np
 import pickle
+import json
+
 
 # ---------------------------------------------------------
 # APP + CORS
@@ -26,6 +28,31 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+@app.route("/get-settings", methods=["GET"])
+@cross_origin()
+def get_settings():
+    email = request.headers.get("Email")
+    if not email:
+        return jsonify({"error": "No email provided"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM user_predict_settings WHERE email=?", (email,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({})  # no saved settings yet
+
+    return jsonify({
+        "attendance": row["attendance"],
+        "studyHours": row["studyHours"],
+        "internalTotal": row["internalTotal"],
+        "assignments": row["assignments"],
+        "participation": row["participation"],
+        "marksMode": row["marksMode"],
+        "subjectMarks": json.loads(row["subjectMarks"]),
+    })
 
 # ---------------------------------------------------------
 # INIT TABLES
@@ -60,6 +87,20 @@ def init_db():
             created_at TEXT
         )
     """)
+    # SAVE LAST USED PREDICTOR FORM VALUES
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_predict_settings (
+            email TEXT PRIMARY KEY,
+            attendance REAL,
+            studyHours REAL,
+            internalTotal REAL,
+            assignments REAL,
+            participation TEXT,
+            marksMode TEXT,
+            subjectMarks TEXT  -- stored as JSON
+        )
+    """)
+
 
     conn.commit()
     conn.close()
@@ -156,7 +197,7 @@ def login():
 # ---------------------------------------------------------
 # ⭐ ADDED: STUDENT PREDICT API (ONLY FIX YOU REQUESTED)
 # ---------------------------------------------------------
-@app.route("/predict", methods=["POST", "OPTIONS"])
+@app.route("/predict", methods=["POST"])
 @cross_origin()
 def predict():
     data = request.get_json()
@@ -167,22 +208,94 @@ def predict():
     assignments = float(data["assignments"])
     participation = data["participation"]
 
+    # Encode participation
     participation_encoded = label_encoder.transform([participation])[0]
 
-    input_vec = np.array([[attendance, studyHours, internalTotal, assignments, participation_encoded]])
+    # ML input vector
+    input_vec = np.array([
+        [attendance, studyHours, internalTotal, assignments, participation_encoded]
+    ])
 
+    # ML Prediction
     pred = model.predict(input_vec)[0]
     prob = model.predict_proba(input_vec)[0]
 
     prediction_label = "Pass" if pred == 1 else "Fail"
     confidence = float(max(prob))
 
+    # --------------------------------------------
+    # SAVE USER SETTINGS IN DB
+    # --------------------------------------------
+    email = request.headers.get("Email")  # MUST be sent from frontend
+
+    if email:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Insert OR Update user's last-used predictor values
+        cur.execute("""
+            INSERT INTO user_predict_settings 
+            (email, attendance, studyHours, internalTotal, assignments, participation, marksMode, subjectMarks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET
+                attendance = excluded.attendance,
+                studyHours = excluded.studyHours,
+                internalTotal = excluded.internalTotal,
+                assignments = excluded.assignments,
+                participation = excluded.participation,
+                marksMode = excluded.marksMode,
+                subjectMarks = excluded.subjectMarks
+        """, (
+            email,
+            attendance,
+            studyHours,
+            internalTotal,
+            assignments,
+            participation,
+            data.get("marksMode", "total"),               # save mode
+            json.dumps(data.get("subjectMarks", {}))      # save marks
+        ))
+
+        conn.commit()
+        conn.close()
+
+    # --------------------------------------------
+
     return jsonify({
         "prediction": prediction_label,
         "confidence": confidence
     })
 
+# ---------------------------------------------------------
+# GET LAST SAVED PREDICTOR SETTINGS
+# ---------------------------------------------------------
+@app.route("/predict/settings", methods=["GET"])
+@cross_origin()
+def get_predict_settings():
+    email = request.headers.get("Email")
 
+    if not email:
+        return jsonify({"error": "Email header missing"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM user_predict_settings WHERE email=?", (email,))
+    row = cur.fetchone()
+
+    if not row:
+        return jsonify({"exists": False}), 200
+
+    return jsonify({
+        "exists": True,
+        "attendance": row["attendance"],
+        "studyHours": row["studyHours"],
+        "internalTotal": row["internalTotal"],
+        "assignments": row["assignments"],
+        "participation": row["participation"],
+        "marksMode": row["marksMode"],
+        "subjectMarks": json.loads(row["subjectMarks"]) if row["subjectMarks"] else {}
+    })
 # ---------------------------------------------------------
 @app.route("/")
 def home():
