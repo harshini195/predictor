@@ -25,7 +25,6 @@ import {
 import {
   Download as DownloadIcon,
   People as PeopleIcon,
-  Star as StarIcon,
   Warning as WarningIcon,
   Close as CloseIcon,
   BarChart as BarChartIcon,
@@ -76,42 +75,162 @@ function exportCSV(filename, rows) {
 }
 
 /* -------------------------
+   Helpers
+------------------------- */
+const safeNum = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const formatConfidence = (c) => {
+  if (c === null || c === undefined) return 0;
+  // backend seems to use fraction (0.87) or null - ensure number
+  const num = Number(c);
+  if (Number.isNaN(num)) return 0;
+  return Math.round(num * 100);
+};
+
+/* -------------------------
    Main FacultyDashboard
-   ------------------------- */
-export default function FacultyDashboard({ classData }) {
-  // Load registered students from localStorage (real students)
+------------------------- */
+export default function FacultyDashboard() {
   const [registered, setRegistered] = useState([]);
-  const [studentList, setStudentList] = useState([]); // enriched with latest history
-  const [selected, setSelected] = useState(null); // drawer selection
+  const [studentList, setStudentList] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [analyticsHistory, setAnalyticsHistory] = useState([]);
   const [analyticsStudent, setAnalyticsStudent] = useState(null);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
-  // load on mount
+  // Fetch students from backend and normalize to dashboard shape
   useEffect(() => {
-    const regs = JSON.parse(localStorage.getItem("registeredStudents")) || [];
-    setRegistered(regs);
-
-    // enrich each student with latest history and computed fields
-    const enriched = regs.map((stu) => {
-      const history = JSON.parse(localStorage.getItem(`history_${stu.email}`)) || [];
-      const latest = history[0] || null;
-      return {
-        ...stu,
-        latestPrediction: latest?.prediction ?? "No Data",
-        confidence: latest ? latest.confidence : 0,
-        lastActivity: latest?.date ?? null,
-        attendance: latest?.inputs?.attendance ?? null,
-        studyHours: latest?.inputs?.studyHours ?? latest?.inputs?.study_hours ?? null,
-        internalMarks: latest?.inputs?.internalTotal ?? latest?.inputs?.internal_total ?? null,
-        assignments: latest?.inputs?.assignments ?? null,
-        subjectMarks: latest?.subjectMarks ?? null,
-        isActive: history.length > 0,
-      };
-    });
-
-    setStudentList(enriched);
+    fetchStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function fetchStudents() {
+    setLoadingStudents(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await fetch("http://localhost:5001/students/latest", {
+        method: "GET",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+      const regs = Array.isArray(json.students) ? json.students : [];
+
+      // Map server response to dashboard-friendly objects
+      const enriched = regs.map((stu) => {
+        // prefer latest_inputs if available, else use saved_* values
+        const latestInputs = stu.latest_inputs ?? null;
+        const saved = {
+          attendance: safeNum(stu.saved_attendance),
+          studyHours: safeNum(stu.saved_studyHours),
+          internalTotal: safeNum(stu.saved_internalTotal),
+          assignments: safeNum(stu.saved_assignments),
+          participation: stu.saved_participation ?? null,
+          marksMode: stu.saved_marksMode ?? "total",
+          subjectMarks: stu.saved_subjectMarks ?? stu.subjectMarks ?? null,
+        };
+
+        const inputs = latestInputs
+          ? {
+            attendance: safeNum(latestInputs.attendance),
+            studyHours: safeNum(latestInputs.studyHours ?? latestInputs.study_hours),
+            internalTotal: safeNum(latestInputs.internalTotal ?? latestInputs.internal_total),
+            assignments: safeNum(latestInputs.assignments),
+            participation: latestInputs.participation ?? saved.participation,
+          }
+          : saved;
+
+        // subjectMarks can be stored as an object or a JSON string - normalize
+        let subjectMarks = stu.subjectMarks ?? saved.subjectMarks ?? null;
+        if (typeof subjectMarks === "string" && subjectMarks.trim()) {
+          try {
+            subjectMarks = JSON.parse(subjectMarks);
+          } catch (e) {
+            // leave as is
+          }
+        }
+
+        const hasSavedData =
+          safeNum(stu.saved_attendance) !== null ||
+          safeNum(stu.saved_internalTotal) !== null ||
+          safeNum(stu.saved_assignments) !== null ||
+          (stu.subjectMarks && Object.values(stu.subjectMarks).some(v => v !== "" && v !== null));
+
+        let latestPrediction;
+        if (stu.latest_prediction) {
+          latestPrediction = stu.latest_prediction;
+        } else if (hasSavedData) {
+          latestPrediction = " Data Available"; // <-- FIX
+        } else {
+          latestPrediction = "No Data";
+        }
+
+        let confidence;
+        if (stu.latest_confidence !== null && stu.latest_confidence !== undefined) {
+          confidence = Number(stu.latest_confidence);
+        } else if (hasSavedData) {
+          confidence = 0; // saved marks exist but no prediction yet
+        } else {
+          confidence = null;
+        }
+        return {
+          name: stu.name ?? stu.email,
+          email: stu.email,
+          usn: stu.usn ?? "",
+          department: stu.department ?? "",
+          semester: stu.semester ?? "",
+          latestPrediction,
+          confidence,
+          lastActivity: null,
+          attendance: inputs?.attendance ?? null,
+          studyHours: inputs?.studyHours ?? null,
+          internalMarks: inputs?.internalTotal ?? null,
+          assignments: inputs?.assignments ?? null,
+          subjectMarks: subjectMarks,
+          isActive: !!stu.latest_prediction, // this stays same
+        };
+      });
+
+      setRegistered(regs);
+      setStudentList(enriched);
+
+      // persist a lightweight copy locally as fallback
+      localStorage.setItem("registeredStudents", JSON.stringify(regs));
+    } catch (err) {
+      console.error("Failed to load students from backend:", err);
+      // fallback to previously cached localStorage registeredStudents
+      const regs = JSON.parse(localStorage.getItem("registeredStudents")) || [];
+      const enriched = regs.map((stu) => {
+        const history = JSON.parse(localStorage.getItem(`history_${stu.email}`)) || [];
+        const latest = history[0] || null;
+        return {
+          ...stu,
+          latestPrediction: latest?.prediction ?? "No Data",
+          confidence: latest ? latest.confidence : 0,
+          lastActivity: latest?.date ?? null,
+          attendance: latest?.inputs?.attendance ?? null,
+          studyHours: latest?.inputs?.studyHours ?? null,
+          internalMarks: latest?.inputs?.internalTotal ?? null,
+          assignments: latest?.inputs?.assignments ?? null,
+          subjectMarks: stu.subjectMarks ?? null,
+          isActive: history.length > 0,
+        };
+      });
+      setRegistered(regs);
+      setStudentList(enriched);
+    } finally {
+      setLoadingStudents(false);
+    }
+  }
 
   // derived totals & charts
   const totals = useMemo(() => {
@@ -119,7 +238,6 @@ export default function FacultyDashboard({ classData }) {
     const activeCount = studentList.filter((s) => s.isActive).length;
     const atRisk = studentList.filter((s) => s.latestPrediction === "Fail").length;
 
-    // department counts
     const deptCounts = {};
     registered.forEach((s) => {
       const d = s.department || "Unknown";
@@ -129,14 +247,12 @@ export default function FacultyDashboard({ classData }) {
     return { totalRegistered, activeCount, atRisk, deptCounts };
   }, [registered, studentList]);
 
-  // Compute pass/fail counts from studentList where we have predictions
   const passFailCounts = useMemo(() => {
     const pass = studentList.filter((s) => s.latestPrediction === "Pass").length;
     const fail = studentList.filter((s) => s.latestPrediction === "Fail").length;
     return { pass, fail };
   }, [studentList]);
 
-  // Subject averages if subjectMarks exist
   const subjectAverages = useMemo(() => {
     const firstWith = studentList.find((s) => s.subjectMarks);
     const subjects = firstWith ? Object.keys(firstWith.subjectMarks) : [];
@@ -154,7 +270,6 @@ export default function FacultyDashboard({ classData }) {
     return subjects.map((sub) => ({ subject: sub, avg: count ? sums[sub] / count : 0 }));
   }, [studentList]);
 
-  // Attendance buckets used for bar chart
   const attendanceBuckets = useMemo(() => {
     const buckets = [
       { name: "<60%", count: 0 },
@@ -197,9 +312,8 @@ export default function FacultyDashboard({ classData }) {
   };
 
   const openAnalytics = (student) => {
-    // get student's history from localStorage
+    // fallback: localStorage-based history (you can replace this with backend call later)
     const hist = JSON.parse(localStorage.getItem(`history_${student.email}`)) || [];
-    // last up to 20 entries, reversed so older -> newer order
     const sliced = hist.slice(0, 20).map((h) => ({
       date: h.date ? new Date(h.date).toLocaleString() : "",
       confidence: typeof h.confidence === "number" ? Math.round(h.confidence * 100) : null,
@@ -237,6 +351,9 @@ export default function FacultyDashboard({ classData }) {
                 <Chip icon={<PeopleIcon />} label={`${totals.totalRegistered} registered`} />
                 <Chip icon={<EventAvailableIcon />} color="primary" label={`${totals.activeCount} active`} />
                 <Chip icon={<WarningIcon />} color="error" label={`${totals.atRisk} at-risk`} />
+                <Button variant="outlined" onClick={() => fetchStudents()} disabled={loadingStudents}>
+                  {loadingStudents ? "Refreshing..." : "Refresh"}
+                </Button>
                 <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleExportAll}>
                   Export CSV
                 </Button>
@@ -253,7 +370,7 @@ export default function FacultyDashboard({ classData }) {
               <Typography variant="h5" sx={{ mb: 1 }}>
                 {Math.round(
                   studentList.filter(s => s.attendance).reduce((a, b) => a + (b.attendance || 0), 0) /
-                    Math.max(1, studentList.filter(s => s.attendance).length)
+                  Math.max(1, studentList.filter(s => s.attendance).length)
                 ) || 0}%
               </Typography>
               <Typography variant="caption" color="text.secondary">Calculated from active students</Typography>
@@ -266,7 +383,7 @@ export default function FacultyDashboard({ classData }) {
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary">Avg Study Hours (active)</Typography>
               <Typography variant="h5" sx={{ mb: 1 }}>
-                {(studentList.filter(s => s.studyHours).reduce((a,b)=>a+(b.studyHours||0),0) / Math.max(1, studentList.filter(s => s.studyHours).length)).toFixed(1) || 0} hrs
+                {(studentList.filter(s => s.studyHours).reduce((a, b) => a + (b.studyHours || 0), 0) / Math.max(1, studentList.filter(s => s.studyHours).length)).toFixed(1) || 0} hrs
               </Typography>
               <Typography variant="caption" color="text.secondary">Per student / day</Typography>
             </CardContent>
@@ -278,7 +395,7 @@ export default function FacultyDashboard({ classData }) {
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary">Avg Internal Marks</Typography>
               <Typography variant="h5" sx={{ mb: 1 }}>
-                {Math.round(studentList.filter(s=>s.internalMarks).reduce((a,b)=>a+(b.internalMarks||0),0) / Math.max(1, studentList.filter(s=>s.internalMarks).length)) || 0}/250
+                {Math.round(studentList.filter(s => s.internalMarks).reduce((a, b) => a + (b.internalMarks || 0), 0) / Math.max(1, studentList.filter(s => s.internalMarks).length)) || 0}/250
               </Typography>
               <Typography variant="caption" color="text.secondary">Mean (active students)</Typography>
             </CardContent>
@@ -298,42 +415,25 @@ export default function FacultyDashboard({ classData }) {
         </Grid>
 
         {/* Charts */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>Pass/Fail Distribution</Typography>
-              <Box sx={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: "Pass", value: passFailCounts.pass },
-                        { name: "Fail", value: passFailCounts.fail },
-                      ]}
-                      innerRadius={50}
-                      outerRadius={90}
-                      dataKey="value"
-                      label
-                    >
-                      <Cell fill="#59a14f" />
-                      <Cell fill="#e15759" />
-                    </Pie>
-                    <ReTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+
 
         <Grid item xs={12} md={6}>
           <Card sx={{ height: "100%" }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Department Counts</Typography>
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
+              <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", mt: 2 ,ml:2}}>
                 {Object.entries(totals.deptCounts).length === 0 && <Typography color="text.secondary">No departments</Typography>}
                 {Object.entries(totals.deptCounts).map(([dept, cnt]) => (
-                  <Chip key={dept} label={`${dept}: ${cnt}`} />
+                  <Chip
+                    key={dept}
+                    label={`${dept}: ${cnt}`}
+                    sx={{
+                      "& .MuiChip-label": {
+                        fontSize: "1.5rem",   
+                        fontWeight: "400",    // optional but keeps it readable
+                      },
+                    }}
+                  />
                 ))}
               </Box>
             </CardContent>
@@ -380,29 +480,6 @@ export default function FacultyDashboard({ classData }) {
         </Grid>
 
         {/* Student lists */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Typography variant="h6">At-risk / Intervention List</Typography>
-              <List sx={{ maxHeight: 360, overflow: "auto" }}>
-                {studentList.filter(s => s.latestPrediction === "Fail").length === 0 && <Typography color="text.secondary" sx={{ mt: 1 }}>No students flagged</Typography>}
-                {studentList.filter(s => s.latestPrediction === "Fail").map((s) => (
-                  <ListItem key={s.email} button onClick={() => setSelected(s)}>
-                    <ListItemAvatar>
-                      <Avatar sx={{ bgcolor: "error.main" }}><WarningIcon /></Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={s.name}
-                      secondary={`${s.usn || ""} • attendance ${s.attendance ?? "—"} • marks ${s.internalMarks ?? "—"}`}
-                    />
-                    <Chip label={`${Math.round((s.confidence||0) * 100)}%`} color="warning" />
-                    <Button sx={{ ml: 1 }} variant="outlined" onClick={(e) => { e.stopPropagation(); openAnalytics(s); }}>View Analytics</Button>
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
 
         <Grid item xs={12} md={6}>
           <Card sx={{ height: "100%" }}>
@@ -419,7 +496,14 @@ export default function FacultyDashboard({ classData }) {
                       primary={s.name}
                       secondary={`${s.usn || ""} — ${s.department || "—"} — last: ${s.lastActivity ? new Date(s.lastActivity).toLocaleString() : "—"}`}
                     />
-                    <Chip label={s.latestPrediction || "No Data"} color={s.latestPrediction === "Pass" ? "success" : s.latestPrediction === "Fail" ? "error" : "default"} />
+                    <Chip
+                      label={s.latestPrediction || "No Data"}
+                      sx={{
+                        bgcolor: s.latestPrediction !== "No Data" ? "#59a14f" : "#e0e0e0",
+                        color: s.latestPrediction !== "No Data" ? "white" : "black",
+                        fontWeight: 600,
+                      }}
+                    />
                     <Tooltip title="Open analytics">
                       <Button sx={{ ml: 1 }} variant="text" onClick={(e) => { e.stopPropagation(); openAnalytics(s); }}>View Analytics</Button>
                     </Tooltip>
@@ -470,8 +554,8 @@ export default function FacultyDashboard({ classData }) {
               <Divider sx={{ mb: 2 }} />
 
               <Typography variant="subtitle2">Prediction</Typography>
-              <Typography variant="h6" sx={{ mb: 1, color: selected.latestPrediction === "Pass" ? "success.main" : "error.main" }}>
-                {selected.latestPrediction} • {Math.round((selected.confidence || 0) * 100)}%
+              <Typography variant="h6" sx={{ mb: 1, color: selected.latestPrediction === "Pass" ? "success.main" : selected.latestPrediction === "Fail" ? "error.main" : "text.primary" }}>
+                {selected.latestPrediction} • {formatConfidence(selected.confidence)}%
               </Typography>
 
               <Typography variant="subtitle2">Key Metrics</Typography>
@@ -496,12 +580,12 @@ export default function FacultyDashboard({ classData }) {
 
               <Typography variant="subtitle2" gutterBottom>Subject Scores</Typography>
               <Grid container spacing={1}>
-                {selected.subjectMarks ? (
+                {selected.subjectMarks && Object.keys(selected.subjectMarks).length > 0 ? (
                   Object.entries(selected.subjectMarks).map(([k, v]) => (
                     <Grid item xs={6} key={k}>
                       <Box sx={{ p: 1, borderRadius: 1, bgcolor: "#f5f5f5" }}>
                         <Typography variant="caption">{k}</Typography>
-                        <Typography variant="h6">{v}</Typography>
+                        <Typography variant="h6">{v === "" || v === null ? "—" : v}</Typography>
                       </Box>
                     </Grid>
                   ))

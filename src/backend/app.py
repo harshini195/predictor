@@ -7,6 +7,7 @@ import datetime
 import numpy as np
 import pickle
 import json
+from flask import g  # if not already imported
 
 
 # ---------------------------------------------------------
@@ -53,6 +54,119 @@ def get_settings():
         "marksMode": row["marksMode"],
         "subjectMarks": json.loads(row["subjectMarks"]),
     })
+@app.route("/students", methods=["GET"])
+def list_students():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT name, email, usn, department, semester, created_at FROM users WHERE role = 'student'")
+    rows = cur.fetchall()
+    students = [dict(r) for r in rows]
+    conn.close()
+    return jsonify({"students": students})
+
+
+# Return students with their latest prediction (if any) and saved predictor settings
+@app.route("/students/latest", methods=["GET"])
+def students_with_latest():
+    conn = get_db()
+    cur = conn.cursor()
+
+    # For each student, pick latest prediction_history record (if exists)
+    # Also fetch user_predict_settings if present
+    cur.execute("""
+        SELECT u.name, u.email, u.usn, u.department, u.semester,
+               ph.prediction AS latest_prediction,
+               ph.confidence AS latest_confidence,
+               ph.input_json AS latest_inputs_json,
+               ups.attendance AS saved_attendance,
+               ups.studyHours AS saved_studyHours,
+               ups.internalTotal AS saved_internalTotal,
+               ups.assignments AS saved_assignments,
+               ups.participation AS saved_participation,
+               ups.marksMode AS saved_marksMode,
+               ups.subjectMarks AS saved_subjectMarks
+        FROM users u
+        LEFT JOIN (
+            SELECT p1.*
+            FROM prediction_history p1
+            JOIN (
+                SELECT email, MAX(created_at) AS maxdt FROM prediction_history GROUP BY email
+            ) p2 ON p1.email = p2.email AND p1.created_at = p2.maxdt
+        ) ph ON ph.email = u.email
+        LEFT JOIN user_predict_settings ups ON ups.email = u.email
+        WHERE u.role = 'student'
+    """)
+
+    rows = cur.fetchall()
+    students = []
+    for r in rows:
+        obj = dict(r)
+        # parse input_json and subjectMarks JSON if present
+        try:
+            obj["latest_inputs"] = json.loads(obj.pop("latest_inputs_json")) if obj.get("latest_inputs_json") else None
+        except Exception:
+            obj["latest_inputs"] = None
+        try:
+            obj["subjectMarks"] = json.loads(obj.pop("saved_subjectMarks")) if obj.get("saved_subjectMarks") else None
+        except Exception:
+            obj["subjectMarks"] = None
+
+        students.append(obj)
+
+    conn.close()
+    return jsonify({"students": students})
+# DELETE /students/<email>
+@app.route("/students/<email>", methods=["DELETE"])
+def delete_student(email):
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Delete from main users table
+    cur.execute("DELETE FROM users WHERE email = ?", (email,))
+
+    # Optional cleanup: delete settings & history also
+    cur.execute("DELETE FROM user_predict_settings WHERE email = ?", (email,))
+    cur.execute("DELETE FROM prediction_history WHERE email = ?", (email,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "deleted": email})
+
+# ---------------------------------------------------------
+# FACULTY PREDICT (Separate Endpoint)
+# ---------------------------------------------------------
+@app.route("/faculty/predict", methods=["POST"])
+@cross_origin()
+def faculty_predict():
+    print("🔥 Faculty Predict Endpoint HIT!")   # <--- ADD THIS LINE
+
+    data = request.get_json()
+    print("Received Data:", data)              # <--- AND THIS
+
+    attendance = float(data["attendance"])
+    studyHours = float(data["studyHours"])
+    internalTotal = float(data["internalTotal"])
+    assignments = float(data["assignments"])
+    participation = data["participation"]
+
+    participation_encoded = label_encoder.transform([participation])[0]
+
+    input_vec = np.array([
+        [attendance, studyHours, internalTotal, assignments, participation_encoded]
+    ])
+
+    pred = model.predict(input_vec)[0]
+    prob = model.predict_proba(input_vec)[0]
+
+    prediction_label = "Pass" if pred == 1 else "Fail"
+    confidence = float(max(prob))
+
+    return jsonify({
+        "prediction": prediction_label,
+        "confidence": confidence
+    })
+
 
 # ---------------------------------------------------------
 # INIT TABLES
