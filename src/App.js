@@ -31,7 +31,7 @@ import InsightsPage from "./components/InsightsPage";
 // -------------------------------
 // AXIOS TOKEN SETUP
 // -------------------------------
-axios.defaults.baseURL = "http://127.0.0.1:5001";
+axios.defaults.baseURL = "http://localhost:5001";
 
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("authToken");

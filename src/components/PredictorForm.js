@@ -124,7 +124,7 @@ export default function PredictorForm({ savePrediction }) {
               .reduce((a, b) => a + b, 0);
 
       const res = await axios.post(
-        "http://127.0.0.1:5001/predict",
+        "http://localhost:5001/predict",
         {
           attendance: Number(form.attendance),
           studyHours: Number(form.studyHours),

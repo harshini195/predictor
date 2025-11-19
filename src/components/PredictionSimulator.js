@@ -69,7 +69,7 @@ export default function PredictionSimulator({ initial = {}, onSimulate = null })
 
 
     try {
-      const res = await axios.post("http://127.0.0.1:5001/predict", payload, { timeout: 7000 });
+      const res = await axios.post("http://localhost:5001/predict", payload, { timeout: 7000 });
       // expected { prediction: 'Pass'/'Fail', confidence: 0.x }
       setPrediction(res.data.prediction);
       setConfidence((res.data.confidence ?? 0) * 100);
