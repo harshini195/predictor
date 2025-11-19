@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import sqlite3
 import bcrypt
 import jwt
@@ -13,7 +13,6 @@ import pickle
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "your-secret-key"
 
-# FULL CORS FIX
 CORS(app, supports_credentials=True)
 
 # ---------------------------------------------------------
@@ -151,6 +150,36 @@ def login():
         "usn": user["usn"],
         "department": user["department"],
         "semester": user["semester"]
+    })
+
+
+# ---------------------------------------------------------
+# ⭐ ADDED: STUDENT PREDICT API (ONLY FIX YOU REQUESTED)
+# ---------------------------------------------------------
+@app.route("/predict", methods=["POST", "OPTIONS"])
+@cross_origin()
+def predict():
+    data = request.get_json()
+
+    attendance = float(data["attendance"])
+    studyHours = float(data["studyHours"])
+    internalTotal = float(data["internalTotal"])
+    assignments = float(data["assignments"])
+    participation = data["participation"]
+
+    participation_encoded = label_encoder.transform([participation])[0]
+
+    input_vec = np.array([[attendance, studyHours, internalTotal, assignments, participation_encoded]])
+
+    pred = model.predict(input_vec)[0]
+    prob = model.predict_proba(input_vec)[0]
+
+    prediction_label = "Pass" if pred == 1 else "Fail"
+    confidence = float(max(prob))
+
+    return jsonify({
+        "prediction": prediction_label,
+        "confidence": confidence
     })
 
 

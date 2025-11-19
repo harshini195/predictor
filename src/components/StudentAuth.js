@@ -19,7 +19,7 @@ import {
 
 import axios from "axios";
 
-const API = "http://127.0.0.1:5001";
+const API = "http://localhost:5001";
 
 function TabPanel({ children, value, index }) {
     return value === index && <Box sx={{ p: 3 }}>{children}</Box>;
