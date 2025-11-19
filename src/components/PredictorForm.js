@@ -39,6 +39,7 @@ import {
 
 export default function PredictorForm({ savePrediction }) {
   const navigate = useNavigate();
+  const PIE_COLORS = ["#4e79a7", "#59a14f", "#f28e2b", "#e15759", "#76b7b2"];
 
   const [form, setForm] = useState({
     attendance: "",
@@ -61,6 +62,11 @@ export default function PredictorForm({ savePrediction }) {
   const [result, setResult] = useState(null);
   const [confidence, setConfidence] = useState(null);
   const [error, setError] = useState("");
+  const pieData = Object.keys(subjectMarks).map((key, i) => ({
+    name: key.toUpperCase(),
+    value: Number(subjectMarks[key]) || 0,
+    color: PIE_COLORS[i],
+  }));
 
   // Auto-update total marks
   useEffect(() => {
@@ -120,8 +126,8 @@ export default function PredictorForm({ savePrediction }) {
         marksMode === "total"
           ? Number(form.internalTotal)
           : Object.values(subjectMarks)
-              .map((v) => Number(v))
-              .reduce((a, b) => a + b, 0);
+            .map((v) => Number(v))
+            .reduce((a, b) => a + b, 0);
 
       const res = await axios.post(
         "http://localhost:5001/predict",
@@ -185,12 +191,14 @@ export default function PredictorForm({ savePrediction }) {
                   label="Attendance (%)"
                   type="number"
                   value={form.attendance}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const val = e.target.value;
                     setForm({
                       ...form,
-                      attendance: Math.max(0, Math.min(100, Number(e.target.value))),
-                    })
-                  }
+                      attendance: val === "" ? "" : Math.max(0, Math.min(100, Number(val))),
+                    });
+                  }}
+
                   InputProps={{ startAdornment: <School sx={{ mr: 1 }} /> }}
                 />
               </Grid>
@@ -202,12 +210,16 @@ export default function PredictorForm({ savePrediction }) {
                   label="Study Hours per day"
                   type="number"
                   value={form.studyHours}
-                  onChange={(e) =>
+
+                  onChange={(e) => {
+                    const val = e.target.value;
                     setForm({
                       ...form,
-                      studyHours: Math.max(0, Math.min(6, Number(e.target.value))),
-                    })
-                  }
+                      studyHours: val === "" ? "" : Math.max(0, Math.min(6, Number(val))),
+                    });
+                  }}
+
+
                   InputProps={{ startAdornment: <Timer sx={{ mr: 1 }} /> }}
                 />
               </Grid>
@@ -219,12 +231,14 @@ export default function PredictorForm({ savePrediction }) {
                   label="Assignments Submitted (out of 6)"
                   type="number"
                   value={form.assignments}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const val = e.target.value;
                     setForm({
                       ...form,
-                      assignments: Math.max(0, Math.min(6, Number(e.target.value))),
-                    })
-                  }
+                      assignments: val === "" ? "" : Math.max(0, Math.min(6, Number(val))),
+                    });
+                  }}
+
                   InputProps={{ startAdornment: <AssignmentTurnedIn sx={{ mr: 1 }} /> }}
                 />
               </Grid>
@@ -249,12 +263,14 @@ export default function PredictorForm({ savePrediction }) {
                     label="Total Internal Marks (out of 250)"
                     type="number"
                     value={form.internalTotal}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const val = e.target.value;
                       setForm({
                         ...form,
-                        internalTotal: Math.max(0, Math.min(250, Number(e.target.value))),
-                      })
-                    }
+                        internalTotal: val === "" ? "" : Math.max(0, Math.min(250, Number(val))),
+                      });
+                    }}
+
                     InputProps={{ startAdornment: <Assessment sx={{ mr: 1 }} /> }}
                   />
                 </Grid>
@@ -275,7 +291,13 @@ export default function PredictorForm({ savePrediction }) {
                       label={subj.label}
                       type="number"
                       value={subjectMarks[subj.key]}
-                      onChange={handleSubjectMarksChange(subj.key)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSubjectMarks({
+                          ...subjectMarks,
+                          [subj.key]: val === "" ? "" : Math.max(0, Math.min(50, Number(val))),
+                        });
+                      }}
                     />
                   </Grid>
                 ))}
@@ -322,12 +344,15 @@ export default function PredictorForm({ savePrediction }) {
 
         {/* RIGHT RESULT */}
         <Grid item xs={12} md={6}>
+
+          {/* PASS / FAIL CARD ALWAYS SHOWS FIRST */}
           {result ? (
             <Fade in timeout={500}>
               <Card
                 sx={{
                   p: 3,
                   borderRadius: 3,
+                  mb: 2,
                   background:
                     result === "Pass"
                       ? "linear-gradient(135deg,#4CAF50,#2E7D32)"
@@ -342,6 +367,7 @@ export default function PredictorForm({ savePrediction }) {
                     <Typography variant="h6" sx={{ mb: 2 }}>
                       Confidence: {confidence}%
                     </Typography>
+
                     <LinearProgress
                       variant="determinate"
                       value={confidence}
@@ -359,13 +385,50 @@ export default function PredictorForm({ savePrediction }) {
               </Card>
             </Fade>
           ) : (
-            <Paper sx={{ p: 4, textAlign: "center" }}>
-              <Typography color="text.secondary">
-                Prediction will appear here
-              </Typography>
+            <Paper sx={{ p: 4, textAlign: "center", mb: 2 }}>
+              <Typography color="text.secondary">Prediction will appear here</Typography>
             </Paper>
           )}
+
+          {/* SUBJECT-WISE PIE CHART BELOW PASS/FAIL CARD */}
+          {marksMode === "individual" && result && (
+            <Fade in timeout={600}>
+              <Card
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: "white",
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+                  Subject-wise Mark Distribution
+                </Typography>
+
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={40}
+                      outerRadius={90}
+                      paddingAngle={4}
+                      label={(entry) => `${entry.name}: ${entry.value}`}
+                      labelLine={true}     // ← permanent labels
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Card>
+            </Fade>
+          )}
         </Grid>
+
       </Grid>
     </Box>
   );

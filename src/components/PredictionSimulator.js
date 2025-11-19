@@ -307,7 +307,7 @@ const styles = `
           <Grid item xs={12}>
             <Fade in={!error}>
               <Typography variant="caption" color="text.secondary">
-                Tip: slide values and click "Simulate" to query the model or use the local heuristic if backend isn't reachable.
+                Tip: slide values and click "Simulate" to query the model.
               </Typography>
             </Fade>
             {error && (
