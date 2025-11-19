@@ -36,13 +36,13 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   const [simResult, setSimResult] = useState(null);
 
   // 🔥 Extract values from latest prediction
-const inputs = latestPrediction?.inputs || {};
+  const inputs = latestPrediction?.inputs || {};
 
-const attendance = Number(inputs.attendance ?? 0);
-const studyHours = Number(inputs.studyHours ?? inputs.study_hours ?? 0);
-const marks = Number(inputs.internalTotal ?? inputs.internal_total ?? 0);
-const assignments = Number(inputs.assignments ?? 0);
-const participation = inputs.participation ?? "Medium";
+  const attendance = Number(inputs.attendance ?? 0);
+  const studyHours = Number(inputs.studyHours ?? inputs.study_hours ?? 0);
+  const marks = Number(inputs.internalTotal ?? inputs.internal_total ?? 0);
+  const assignments = Number(inputs.assignments ?? 0);
+  const participation = inputs.participation ?? "Medium";
 
   const participationWeight = participation === "High" ? 10 : participation === "Medium" ? 5 : 2;
   const performanceScore = Math.round(
@@ -54,13 +54,13 @@ const participation = inputs.participation ?? "Medium";
   );
   const scoreLabel =
     performanceScore >= 80 ? "Excellent" :
-    performanceScore >= 60 ? "Good" :
-    performanceScore >= 40 ? "Average" :
-    "Needs Improvement";
+      performanceScore >= 60 ? "Good" :
+        performanceScore >= 40 ? "Average" :
+          "Needs Improvement";
 
   const RiskColor = performanceScore >= 80 ? "success" :
-                    performanceScore >= 60 ? "info" :
-                    performanceScore >= 40 ? "warning" : "error";
+    performanceScore >= 60 ? "info" :
+      performanceScore >= 40 ? "warning" : "error";
 
   const pieData = [
     { name: "Attendance", value: attendance },
@@ -109,7 +109,7 @@ const participation = inputs.participation ?? "Medium";
     <Box sx={{ p: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Typography variant="h4">Student Dashboard</Typography>
-        
+
         <Chip label={`${scoreLabel} (${performanceScore})`} color={RiskColor} />
       </Box>
 
@@ -213,32 +213,36 @@ const participation = inputs.participation ?? "Medium";
 
       {/* SUBJECT HEATMAP */}
       <Grid container spacing={3} sx={{ mt: 3 }}>
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Subject-wise Heatmap</Typography>
-              <Grid container spacing={1} sx={{ mt: 2 }}>
-                {subjectNames.map((subj, idx) => (
-                  <Grid item xs={6} sm={4} md={2} key={subj}>
-                    <Box
-                      sx={{
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: subjectHeatColors[idx],
-                        color: "white",
-                        textAlign: "center",
-                      }}
-                    >
-                      <Typography variant="subtitle2">{subj}</Typography>
-                      <Typography variant="h6">{subjectScores[idx]}</Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
+  <Grid item xs={12}>
+    <Card>
+      <CardContent>
+        <Typography variant="h6">Subject-wise Heatmap</Typography>
+
+        <Grid container spacing={2} sx={{ mt: 1, justifyContent: "center" }}>
+          {subjectNames.map((subj, idx) => (
+            <Grid item xs={6} sm={4} md={2} key={subj}>
+              <Box
+                sx={{
+                  p: 2,
+                  m: 1,                         // spacing between cards
+                  borderRadius: 3,
+                  bgcolor: subjectHeatColors[idx],
+                  color: "white",
+                  textAlign: "center",
+                  width: "100%",
+                }}
+              >
+                <Typography variant="subtitle2">{subj}</Typography>
+                <Typography variant="h6">{subjectScores[idx]}</Typography>
+              </Box>
+            </Grid>
+          ))}
         </Grid>
-      </Grid>
+
+      </CardContent>
+    </Card>
+  </Grid>
+</Grid>
 
       {/* Prediction Simulator */}
       <PredictionSimulator
