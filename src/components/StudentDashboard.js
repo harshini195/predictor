@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { Button } from "@mui/material";
 
 import {
@@ -50,11 +51,11 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     participation === "High" ? 10 : participation === "Medium" ? 5 : 2;
 
   const performanceScore = Math.round(
-    attendance * 0.3 +
-    studyHours * 8 * 0.2 +
-    (marks / 2.5) * 0.25 +
-    assignments * 10 * 0.1 +
-    participationWeight * 0.15
+    attendance * 0.30 +
+      studyHours * 8 * 0.20 +
+      (marks / 2.5) * 0.25 +
+      assignments * 10 * 0.10 +
+      participationWeight * 0.15
   );
 
   const scoreLabel =
@@ -66,83 +67,14 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
       ? "Average"
       : "Needs Improvement";
 
-  // ==================================================================================
-  //      📄 PROFESSIONAL PDF REPORT — CLEAN, TEXT-ONLY, MODERN DESIGN
-  // ==================================================================================
-  const generateReport = () => {
-    const doc = new jsPDF("p", "pt", "a4");
-
-    // Title
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(24);
-    doc.text("Student Performance Report", 40, 50);
-
-    // Section Header
-    doc.setFontSize(16);
-    doc.setTextColor(60, 60, 60);
-    doc.text("Overall Summary", 40, 100);
-
-    doc.setFont("Helvetica", "normal");
-    doc.setFontSize(13);
-    doc.text(`Performance Level: ${scoreLabel}`, 40, 130);
-    doc.text(`Performance Score: ${performanceScore}`, 40, 150);
-
-    // Metrics Section
-    doc.setFontSize(16);
-    doc.text("Key Student Metrics", 40, 200);
-
-    doc.setFontSize(13);
-    doc.text(`• Attendance: ${attendance}%`, 60, 225);
-    doc.text(`• Study Hours/day: ${studyHours}`, 60, 245);
-    doc.text(`• Internal Marks: ${marks}/250`, 60, 265);
-    doc.text(`• Assignments Submitted: ${assignments}/6`, 60, 285);
-    doc.text(`• Class Participation: ${participation}`, 60, 305);
-
-    // Recommendations
-    doc.setFontSize(16);
-    doc.text("AI Recommendations", 40, 360);
-
-    doc.setFontSize(13);
-    insights.rec.forEach((r, i) => {
-      doc.text(`• ${r}`, 60, 385 + i * 20);
-    });
-
-    // Alerts
-    let alertStart = 385 + insights.rec.length * 20 + 40;
-    doc.setFontSize(16);
-    doc.text("Alerts", 40, alertStart);
-
-    doc.setFontSize(13);
-    if (insights.alerts.length === 0) {
-      doc.text("• No active alerts", 60, alertStart + 25);
-    } else {
-      insights.alerts.forEach((a, i) => {
-        doc.text(`• ${a}`, 60, alertStart + 25 + i * 20);
-      });
-    }
-
-    // Recent Predictions
-    let predStart = alertStart + 80 + insights.alerts.length * 20;
-    doc.setFontSize(16);
-    doc.text("Recent Predictions", 40, predStart);
-
-    doc.setFontSize(13);
-    const recent = predictionHistory.slice(0, 5);
-
-    recent.forEach((p, i) => {
-      doc.text(
-        `${new Date(p.date).toLocaleString()} — ${p.prediction} (${Math.round(
-          p.confidence * 100
-        )}%)`,
-        60,
-        predStart + 25 + i * 20
-      );
-    });
-
-    doc.save("Student_Performance_Report.pdf");
-  };
-
-  // ==================================================================================
+  const RiskColor =
+    performanceScore >= 80
+      ? "success"
+      : performanceScore >= 60
+      ? "info"
+      : performanceScore >= 40
+      ? "warning"
+      : "error";
 
   const pieData = [
     { name: "Attendance", value: attendance },
@@ -156,10 +88,12 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     const alerts = [];
 
     if (attendance && attendance < 75) alerts.push("Low attendance — aim for 75%+");
-    if (studyHours && studyHours < 2) alerts.push("Study more — 2 hours/day recommended");
+    if (studyHours && studyHours < 2)
+      alerts.push("Study more — 2 hours/day recommended");
     if (marks && marks < 150) alerts.push("Internal marks low — revise regularly");
     if (assignments && assignments < 3) alerts.push("Submit more assignments");
-    if (latestPrediction?.prediction === "Fail") alerts.push("Model predicted 'Fail' — act fast");
+    if (latestPrediction?.prediction === "Fail")
+      alerts.push("Model predicted 'Fail' — act fast");
 
     rec.push("Follow a weekly study schedule");
     rec.push("Solve previous question papers");
@@ -187,50 +121,209 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     score < 25 ? "#e15759" : score < 35 ? "#f28e2b" : "#59a14f"
   );
 
+  // ---------------------------
+  // Export full dashboard to PDF (screenshot style)
+  // Produces a multi-page A4 PDF if the dashboard is longer than one page
+  // ---------------------------
+  const generateReport = async () => {
+    // The element we capture. We added id="dashboard-root" to the wrapper Box below.
+    const element = document.getElementById("dashboard-root");
+    if (!element) {
+      alert("Dashboard element not found for export.");
+      return;
+    }
+
+    // Use a higher scale for better resolution
+    const scale = 2; // 2x for sharper text
+    try {
+      const canvas = await html2canvas(element, {
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        backgroundColor: "#ffffff", // ensure white background for PDF
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("p", "pt", "a4"); // points (pt) units
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Canvas dimensions in px
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+
+      // Calculate the image height in pdf dimensions
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvasHeight * imgWidth) / canvasWidth;
+
+      // If image fits on one page, just add it
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      } else {
+        // Multi-page: slice the canvas into page-sized strips
+        let remainingHeight = canvasHeight;
+        let position = 0;
+        const pageCanvas = document.createElement("canvas");
+        const pageCtx = pageCanvas.getContext("2d");
+
+        // set pageCanvas size to slice height based on pdfHeight
+        const sliceHeightPx = Math.floor((canvasWidth * pdfHeight) / imgWidth);
+
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = sliceHeightPx;
+
+        while (remainingHeight > 0) {
+          // draw slice
+          pageCtx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+          pageCtx.drawImage(
+            canvas,
+            0,
+            position,
+            canvasWidth,
+            sliceHeightPx,
+            0,
+            0,
+            canvasWidth,
+            sliceHeightPx
+          );
+
+          const sliceData = pageCanvas.toDataURL("image/png");
+          const sliceImgHeight = (sliceHeightPx * imgWidth) / canvasWidth;
+
+          if (position === 0) {
+            pdf.addImage(sliceData, "PNG", 0, 0, imgWidth, sliceImgHeight);
+          } else {
+            pdf.addPage();
+            pdf.addImage(sliceData, "PNG", 0, 0, imgWidth, sliceImgHeight);
+          }
+
+          remainingHeight -= sliceHeightPx;
+          position += sliceHeightPx;
+        }
+      }
+
+      pdf.save("Student_Dashboard_Report.pdf");
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Failed to generate PDF. See console for details.");
+    }
+  };
+
+  // ---------------------------
+
   return (
-    <Box sx={{ p: 3 }}>
-      
+    // root wrapper now has an id so html2canvas can capture it
+    <Box id="dashboard-root" sx={{ p: 3, background: "#ffffff" }}>
       {/* HEADER */}
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Typography variant="h4">Student Dashboard</Typography>
 
-        {/* PDF Export Button */}
+        {/* Export button in top-right (matches your request to replace chip) */}
         <Button variant="contained" onClick={generateReport} sx={{ background: "#1CC7D0" }}>
-          Export Report
+          Export PDF
         </Button>
       </Box>
 
-      {/* ⭐⭐⭐⭐⭐ GOAL SETTING (Unchanged) ⭐⭐⭐⭐⭐ */}
+      {/* GOAL SETTING (REPLACES OVERALL PERFORMANCE) */}
       <Fade in timeout={700}>
         <Card sx={{ mb: 3, background: "linear-gradient(135deg,#4E73DF,#1CC7D0)", color: "white" }}>
           <CardContent>
             <Typography variant="h5" sx={{ mb: 1 }}>Goal Setting & Achievement</Typography>
+
             {(() => {
               const goals = [];
-              if (attendance < 75) goals.push({ goal: "Increase attendance to 75%", progress: attendance, target: 75, tasks: ["Attend all classes this week", "Avoid unnecessary leave", "Check attendance daily"] });
-              if (studyHours < 2) goals.push({ goal: "Study for at least 2 hours/day", progress: studyHours, target: 2, tasks: ["Create a study plan", "Use Pomodoro method", "Study one subject per day"] });
-              if (marks < 150) goals.push({ goal: "Achieve 150+ internal marks", progress: marks, target: 150, tasks: ["Revise weak subjects", "Attend remedial classes", "Complete question bank"] });
-              if (assignments < 6) goals.push({ goal: "Submit all assignments", progress: assignments, target: 6, tasks: ["Finish pending assignments", "Submit before deadline", "Clarify doubts with faculty"] });
+
+              if (attendance < 75) {
+                goals.push({
+                  goal: "Increase attendance to 75%",
+                  progress: attendance,
+                  target: 75,
+                  tasks: ["Attend all classes this week", "Avoid unnecessary leave", "Check attendance daily"],
+                });
+              }
+
+              if (studyHours < 2) {
+                goals.push({
+                  goal: "Study for at least 2 hours/day",
+                  progress: studyHours,
+                  target: 2,
+                  tasks: ["Create a study plan", "Use Pomodoro method", "Study one subject per day"],
+                });
+              }
+
+              if (marks < 150) {
+                goals.push({
+                  goal: "Achieve 150+ internal marks",
+                  progress: marks,
+                  target: 150,
+                  tasks: ["Revise weak subjects", "Attend remedial classes", "Complete question bank"],
+                });
+              }
+
+              if (assignments < 6) {
+                goals.push({
+                  goal: "Submit all assignments",
+                  progress: assignments,
+                  target: 6,
+                  tasks: ["Finish pending assignments", "Submit before deadline", "Clarify doubts with faculty"],
+                });
+              }
+
               if (participation !== "High") {
                 const levels = { Low: 1, Medium: 2, High: 3 };
-                goals.push({ goal: "Increase class participation", progress: levels[participation], target: 3, tasks: ["Ask questions in class", "Join group discussions", "Volunteer in activities"] });
+                goals.push({
+                  goal: "Increase class participation",
+                  progress: levels[participation],
+                  target: 3,
+                  tasks: ["Ask questions in class", "Join group discussions", "Volunteer in activities"],
+                });
               }
+
               if (goals.length === 0) {
-                return <Alert severity="success" sx={{ mt: 2, bgcolor: "rgba(255,255,255,0.15)", color: "white" }}>🎉 All goals achieved! Excellent work!</Alert>;
+                return (
+                  <Alert severity="success" sx={{ mt: 2, bgcolor: "rgba(255,255,255,0.15)", color: "white" }}>
+                    🎉 All goals achieved! Excellent work!
+                  </Alert>
+                );
               }
+
               return goals.map((g, i) => {
                 const pct = Math.min(Math.round((g.progress / g.target) * 100), 100);
                 return (
                   <Card key={i} sx={{ p: 2, mb: 2, mt: 2, bgcolor: "rgba(255,255,255,0.15)", color: "white" }}>
                     <Typography variant="subtitle1" fontWeight="bold">{g.goal}</Typography>
-                    <LinearProgress variant="determinate" value={pct} sx={{ mt: 1, height: 10, borderRadius: 5, bgcolor: "rgba(255,255,255,0.3)", "& .MuiLinearProgress-bar": { bgcolor: "white" } }} />
+
+                    <LinearProgress
+                      variant="determinate"
+                      value={pct}
+                      sx={{
+                        mt: 1,
+                        height: 10,
+                        borderRadius: 5,
+                        bgcolor: "rgba(255,255,255,0.3)",
+                        "& .MuiLinearProgress-bar": { bgcolor: "white" }
+                      }}
+                    />
+
                     <Typography variant="body2" sx={{ mt: 1 }}>Progress: {pct}%</Typography>
+
                     <Box sx={{ mt: 1 }}>
                       {g.tasks.map((t, idx) => (
-                        <Chip key={idx} label={t} variant="outlined" sx={{ mr: 1, mb: 1, color: "white", borderColor: "white" }} />
+                        <Chip key={idx} label={t} variant="outlined"
+                          sx={{ mr: 1, mb: 1, color: "white", borderColor: "white" }} />
                       ))}
                     </Box>
-                    {pct >= 100 && <Alert severity="success" sx={{ mt: 2, bgcolor: "rgba(0,0,0,0.2)", color: "white" }}>🎯 Goal Achieved!</Alert>}
+
+                    {pct >= 100 && (
+                      <Alert severity="success" sx={{ mt: 2, bgcolor: "rgba(0,0,0,0.2)", color: "white" }}>
+                        🎯 Goal Achieved!
+                      </Alert>
+                    )}
                   </Card>
                 );
               });
@@ -255,7 +348,9 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
                     <Avatar sx={{ bgcolor: `${item.color}.main`, mr: 2 }}>{item.icon}</Avatar>
                     <Typography variant="h6">{item.label}</Typography>
                   </Box>
-                  <Typography variant="h4" color={`${item.color}.main`}>{item.value}</Typography>
+                  <Typography variant="h4" color={`${item.color}.main`}>
+                    {item.value}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grow>
@@ -263,7 +358,7 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
         ))}
       </Grid>
 
-      {/* CHARTS + AI RECOMMENDATIONS (UNCHANGED) */}
+      {/* PERFORMANCE BREAKDOWN */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Card>
@@ -283,20 +378,26 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           </Card>
         </Grid>
 
+        {/* AI Recommendations */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6">AI Recommendations</Typography>
               {insights.rec.map((r, i) => (
-                <Alert key={i} severity="info" sx={{ mb: 1 }}>{r}</Alert>
+                <Alert key={i} severity="info" sx={{ mb: 1 }}>
+                  {r}
+                </Alert>
               ))}
 
               <Divider sx={{ my: 1 }} />
 
               <Typography variant="subtitle2">Alerts</Typography>
+
               {insights.alerts.length > 0 ? (
                 insights.alerts.map((a, i) => (
-                  <Alert key={i} severity="warning" sx={{ mb: 1 }}>{a}</Alert>
+                  <Alert key={i} severity="warning" sx={{ mb: 1 }}>
+                    {a}
+                  </Alert>
                 ))
               ) : (
                 <Alert severity="success">No active alerts</Alert>
@@ -312,10 +413,21 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           <Card>
             <CardContent>
               <Typography variant="h6">Subject-wise Heatmap</Typography>
+
               <Grid container spacing={2} sx={{ mt: 1, justifyContent: "center" }}>
                 {subjectNames.map((subj, idx) => (
                   <Grid item xs={6} sm={4} md={2} key={subj}>
-                    <Box sx={{ p: 2, m: 1, borderRadius: 3, bgcolor: subjectHeatColors[idx], color: "white", textAlign: "center", width: "100%" }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        m: 1,
+                        borderRadius: 3,
+                        bgcolor: subjectHeatColors[idx],
+                        color: "white",
+                        textAlign: "center",
+                        width: "100%",
+                      }}
+                    >
                       <Typography variant="subtitle2">{subj}</Typography>
                       <Typography variant="h6">{subjectScores[idx]}</Typography>
                     </Box>
@@ -343,7 +455,11 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           {predictionHistory.slice(0, 5).map((p, i) => (
             <Box key={i} sx={{ display: "flex", justifyContent: "space-between", my: 1 }}>
               <Typography>{new Date(p.date).toLocaleString()}</Typography>
-              <Typography color={p.prediction === "Pass" ? "success.main" : "error.main"} fontWeight="bold">
+
+              <Typography
+                color={p.prediction === "Pass" ? "success.main" : "error.main"}
+                fontWeight="bold"
+              >
                 {p.prediction} ({Math.round(p.confidence * 100)}%)
               </Typography>
             </Box>
