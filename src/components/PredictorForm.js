@@ -37,7 +37,7 @@ import {
   Tooltip,
 } from "recharts";
 
-export default function PredictorForm({ onPrediction }) {
+export default function PredictorForm({ savePrediction }) {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -62,9 +62,7 @@ export default function PredictorForm({ onPrediction }) {
   const [confidence, setConfidence] = useState(null);
   const [error, setError] = useState("");
 
-  /* --------------------------
-       AUTO-SUM INDIVIDUAL MARKS
-  -------------------------- */
+  // Auto-update total marks
   useEffect(() => {
     if (marksMode === "individual") {
       const total = Object.values(subjectMarks)
@@ -75,9 +73,6 @@ export default function PredictorForm({ onPrediction }) {
     }
   }, [subjectMarks, marksMode]);
 
-  /* --------------------------
-       HELPERS
-  -------------------------- */
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
   };
@@ -90,9 +85,6 @@ export default function PredictorForm({ onPrediction }) {
     });
   };
 
-  /* --------------------------
-       VALIDATION
-  -------------------------- */
   const validate = () => {
     if (
       form.attendance === "" ||
@@ -111,9 +103,7 @@ export default function PredictorForm({ onPrediction }) {
     return true;
   };
 
-  /* --------------------------
-       PREDICT FUNCTION (JWT SECURED)
-  -------------------------- */
+  // Main prediction
   const handlePredict = async () => {
     if (!validate()) {
       setError("Please fill all fields.");
@@ -150,8 +140,9 @@ export default function PredictorForm({ onPrediction }) {
       setResult(res.data.prediction);
       setConfidence((res.data.confidence * 100).toFixed(1));
 
-      if (onPrediction) {
-        onPrediction({
+      // 🔥 CALL THE FUNCTION TO SAVE THE PREDICTION IN App.js
+      if (savePrediction) {
+        savePrediction({
           date: new Date().toISOString(),
           prediction: res.data.prediction,
           confidence: res.data.confidence,
@@ -160,8 +151,6 @@ export default function PredictorForm({ onPrediction }) {
         });
       }
     } catch (err) {
-      console.log(err);
-
       if (err.response?.status === 401 || err.response?.status === 403) {
         setError("Session expired. Please login again.");
         setTimeout(() => navigate("/login"), 1500);
@@ -173,9 +162,6 @@ export default function PredictorForm({ onPrediction }) {
     setLoading(false);
   };
 
-  /* --------------------------
-       UI BELOW
-  -------------------------- */
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ mb: 3 }}>
@@ -183,7 +169,8 @@ export default function PredictorForm({ onPrediction }) {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* LEFT SIDE FORM */}
+
+        {/* LEFT FORM */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, borderRadius: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -201,18 +188,14 @@ export default function PredictorForm({ onPrediction }) {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      attendance: Math.max(
-                        0,
-                        Math.min(100, Number(e.target.value))
-                      ),
+                      attendance: Math.max(0, Math.min(100, Number(e.target.value))),
                     })
                   }
-                  inputProps={{ min: 0, max: 100 }}
                   InputProps={{ startAdornment: <School sx={{ mr: 1 }} /> }}
                 />
               </Grid>
 
-              {/* Study hours */}
+              {/* Study Hours */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -222,13 +205,9 @@ export default function PredictorForm({ onPrediction }) {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      studyHours: Math.max(
-                        0,
-                        Math.min(6, Number(e.target.value))
-                      ),
+                      studyHours: Math.max(0, Math.min(6, Number(e.target.value))),
                     })
                   }
-                  inputProps={{ min: 0, max: 6 }}
                   InputProps={{ startAdornment: <Timer sx={{ mr: 1 }} /> }}
                 />
               </Grid>
@@ -243,85 +222,63 @@ export default function PredictorForm({ onPrediction }) {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      assignments: Math.max(
-                        0,
-                        Math.min(6, Number(e.target.value))
-                      ),
+                      assignments: Math.max(0, Math.min(6, Number(e.target.value))),
                     })
                   }
-                  inputProps={{ min: 0, max: 6 }}
-                  InputProps={{
-                    startAdornment: <AssignmentTurnedIn sx={{ mr: 1 }} />,
-                  }}
+                  InputProps={{ startAdornment: <AssignmentTurnedIn sx={{ mr: 1 }} /> }}
                 />
               </Grid>
 
-              {/* MARKS MODE */}
+              {/* MARKS INPUT MODE */}
               <Grid item xs={12}>
                 <RadioGroup
                   row
                   value={marksMode}
                   onChange={(e) => setMarksMode(e.target.value)}
                 >
-                  <FormControlLabel
-                    value="total"
-                    control={<Radio />}
-                    label="Enter Total Marks"
-                  />
-                  <FormControlLabel
-                    value="individual"
-                    control={<Radio />}
-                    label="Enter Subject-wise Marks"
-                  />
+                  <FormControlLabel value="total" control={<Radio />} label="Total Marks" />
+                  <FormControlLabel value="individual" control={<Radio />} label="Subject-wise Marks" />
                 </RadioGroup>
               </Grid>
 
-              {/* Total Marks */}
+              {/* Total marks */}
               {marksMode === "total" && (
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    type="number"
                     label="Total Internal Marks (out of 250)"
+                    type="number"
                     value={form.internalTotal}
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        internalTotal: Math.max(
-                          0,
-                          Math.min(250, Number(e.target.value))
-                        ),
+                        internalTotal: Math.max(0, Math.min(250, Number(e.target.value))),
                       })
                     }
-                    inputProps={{ min: 0, max: 250 }}
                     InputProps={{ startAdornment: <Assessment sx={{ mr: 1 }} /> }}
                   />
                 </Grid>
               )}
 
-              {/* Individual subject marks */}
-              {marksMode === "individual" && (
-                <>
-                  {[
-                    { key: "sepm", label: "SEPM" },
-                    { key: "cn", label: "CN" },
-                    { key: "toc", label: "TOC" },
-                    { key: "cvcc", label: "CV/CC" },
-                    { key: "rm", label: "RM" },
-                  ].map((subj) => (
-                    <Grid item xs={12} sm={6} key={subj.key}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label={subj.label}
-                        value={subjectMarks[subj.key]}
-                        onChange={handleSubjectMarksChange(subj.key)}
-                        inputProps={{ min: 0, max: 50 }}
-                      />
-                    </Grid>
-                  ))}
-                </>
-              )}
+              {/* Subject-wise marks */}
+              {marksMode === "individual" &&
+                [
+                  { key: "sepm", label: "SEPM" },
+                  { key: "cn", label: "CN" },
+                  { key: "toc", label: "TOC" },
+                  { key: "cvcc", label: "CV/CC" },
+                  { key: "rm", label: "RM" },
+                ].map((subj) => (
+                  <Grid item xs={12} sm={6} key={subj.key}>
+                    <TextField
+                      fullWidth
+                      label={subj.label}
+                      type="number"
+                      value={subjectMarks[subj.key]}
+                      onChange={handleSubjectMarksChange(subj.key)}
+                    />
+                  </Grid>
+                ))}
 
               {/* Participation */}
               <Grid item xs={12}>
@@ -331,9 +288,7 @@ export default function PredictorForm({ onPrediction }) {
                   label="Participation Level"
                   value={form.participation}
                   onChange={handleChange("participation")}
-                  InputProps={{
-                    startAdornment: <EmojiEvents sx={{ mr: 1 }} />,
-                  }}
+                  InputProps={{ startAdornment: <EmojiEvents sx={{ mr: 1 }} /> }}
                 >
                   <MenuItem value="Low">Low</MenuItem>
                   <MenuItem value="Medium">Medium</MenuItem>
@@ -357,63 +312,15 @@ export default function PredictorForm({ onPrediction }) {
                   disabled={loading}
                   onClick={handlePredict}
                 >
-                  {loading ? (
-                    <CircularProgress size={24} sx={{ color: "white" }} />
-                  ) : (
-                    "Predict Performance"
-                  )}
+                  {loading ? <CircularProgress size={24} sx={{ color: "white" }} /> : "Predict Performance"}
                 </Button>
               </Grid>
+
             </Grid>
           </Paper>
         </Grid>
 
-        {/* SUBJECT-WISE PIE CHART */}
-        {marksMode === "individual" && (
-          <Box sx={{ mt: 5 }}>
-            <Card sx={{ p: 3, borderRadius: 3 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Subject-wise Marks Breakdown
-              </Typography>
-
-              <Box sx={{ width: "100%", height: 350 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: "SEPM", value: Number(subjectMarks.sepm || 0) },
-                        { name: "CN", value: Number(subjectMarks.cn || 0) },
-                        { name: "TOC", value: Number(subjectMarks.toc || 0) },
-                        { name: "CV/CC", value: Number(subjectMarks.cvcc || 0) },
-                        { name: "RM", value: Number(subjectMarks.rm || 0) },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={110}
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
-                      dataKey="value"
-                    >
-                      {[
-                        "#4e79a7",
-                        "#f28e2b",
-                        "#e15759",
-                        "#76b7b2",
-                        "#59a14f",
-                      ].map((c, i) => (
-                        <Cell key={i} fill={c} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
-            </Card>
-          </Box>
-        )}
-
-        {/* RIGHT SIDE RESULT */}
+        {/* RIGHT RESULT */}
         <Grid item xs={12} md={6}>
           {result ? (
             <Fade in timeout={500}>
@@ -435,7 +342,6 @@ export default function PredictorForm({ onPrediction }) {
                     <Typography variant="h6" sx={{ mb: 2 }}>
                       Confidence: {confidence}%
                     </Typography>
-
                     <LinearProgress
                       variant="determinate"
                       value={confidence}

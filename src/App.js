@@ -1,5 +1,5 @@
 // ==============================
-//   FINAL UPDATED APP.JS (JWT + DB)
+//   FINAL WORKING APP.JS (SAVE PREDICTION + DASHBOARD UPDATE)
 // ==============================
 import React, { useState, useEffect } from "react";
 import {
@@ -33,12 +33,9 @@ import InsightsPage from "./components/InsightsPage";
 // -------------------------------
 axios.defaults.baseURL = "http://127.0.0.1:5001";
 
-// Automatically attach Authorization header
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("authToken");
-  if (token) {
-    config.headers["Authorization"] = `Bearer ${token}`;
-  }
+  if (token) config.headers["Authorization"] = `Bearer ${token}`;
   return config;
 });
 
@@ -48,17 +45,15 @@ axios.interceptors.request.use((config) => {
 function ProtectedRoute({ user, role, children }) {
   const token = localStorage.getItem("authToken");
 
-  if (!user || !token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (role && user.role !== role) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user || !token) return <Navigate to="/login" replace />;
+  if (role && user.role !== role) return <Navigate to="/login" replace />;
 
   return children;
 }
 
+// -------------------------------
+// THEME
+// -------------------------------
 const theme = createTheme({
   palette: {
     primary: { main: "#1A237E" },
@@ -73,28 +68,46 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load saved user on refresh
+  // 🔥 Prediction states — THESE FIX YOUR DASHBOARD
+  const [latestPrediction, setLatestPrediction] = useState(null);
+  const [predictionHistory, setPredictionHistory] = useState([]);
+
+  // Load user on refresh
   useEffect(() => {
     const savedUser = localStorage.getItem("loggedStudent");
     const savedToken = localStorage.getItem("authToken");
 
     if (savedUser && savedToken) {
       setUser(JSON.parse(savedUser));
+
+      const u = JSON.parse(savedUser);
+      const key = `history_${u.email}`;
+
+      const saved = JSON.parse(localStorage.getItem(key)) || [];
+      setPredictionHistory(saved);
+      setLatestPrediction(saved[0] || null);
     }
 
     setLoading(false);
   }, []);
 
-  // Login handler
+  // ---------------------------
+  // LOGIN
+  // ---------------------------
   const handleLogin = (userData) => {
     setUser(userData);
-
-    // Save backend-authenticated user + JWT
     localStorage.setItem("loggedStudent", JSON.stringify(userData));
-    localStorage.setItem("authToken", userData.token);
+
+    const key = `history_${userData.email}`;
+    const saved = JSON.parse(localStorage.getItem(key)) || [];
+
+    setPredictionHistory(saved);
+    setLatestPrediction(saved[0] || null);
   };
 
-  // Logout handler
+  // ---------------------------
+  // LOGOUT
+  // ---------------------------
   const handleLogout = () => {
     if (user) {
       const key = `history_${user.email}`;
@@ -106,6 +119,24 @@ export default function App() {
     setUser(null);
   };
 
+  // ---------------------------
+  // 🔥 SAVE PREDICTION (used by PredictorForm)
+  // ---------------------------
+  const savePrediction = (pred) => {
+    const u = JSON.parse(localStorage.getItem("loggedStudent"));
+    if (!u) return;
+
+    const key = `history_${u.email}`;
+    const existing = JSON.parse(localStorage.getItem(key)) || [];
+
+    const updated = [pred, ...existing];
+    localStorage.setItem(key, JSON.stringify(updated));
+
+    setLatestPrediction(pred);
+    setPredictionHistory(updated);
+  };
+
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -115,6 +146,9 @@ export default function App() {
             user={user}
             handleLogin={handleLogin}
             handleLogout={handleLogout}
+            latestPrediction={latestPrediction}
+            predictionHistory={predictionHistory}
+            savePrediction={savePrediction}
           />
         )}
       </Router>
@@ -125,13 +159,20 @@ export default function App() {
 // ==============================
 // CONTENT WRAPPER
 // ==============================
-function AppContent({ user, handleLogin, handleLogout }) {
+function AppContent({
+  user,
+  handleLogin,
+  handleLogout,
+  latestPrediction,
+  predictionHistory,
+  savePrediction
+}) {
   const location = useLocation();
   const navigate = useNavigate();
 
   return (
     <>
-      {/* NAVBAR except on /login */}
+      {/* NAVBAR except on login */}
       {location.pathname !== "/login" && (
         <Box
           sx={{
@@ -148,57 +189,51 @@ function AppContent({ user, handleLogin, handleLogout }) {
 
       <Box sx={{ mt: location.pathname !== "/login" ? 8 : 0 }}>
         <Routes>
-          {/* LOGIN PAGE */}
+
+          {/* LOGIN */}
           <Route
             path="/login"
             element={
               <StudentAuth
                 onLogin={(userData) => {
                   handleLogin(userData);
-
-                  if (userData.role === "faculty") {
-                    navigate("/faculty-dashboard");
-                  } else {
-                    navigate("/dashboard");
-                  }
+                  navigate(userData.role === "faculty" ? "/faculty-dashboard" : "/dashboard");
                 }}
               />
             }
           />
 
-          {/* =================== STUDENT ROUTES =================== */}
+          {/* ====================== STUDENT ROUTES ====================== */}
 
-          {/* Default route → Student Predictor */}
           <Route
             path="/"
             element={
               <ProtectedRoute user={user} role="student">
-                <PredictorForm />
+                <PredictorForm savePrediction={savePrediction} />
               </ProtectedRoute>
             }
           />
 
-          {/* Student dashboard */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute user={user} role="student">
-                <StudentDashboard user={user} />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Student predictor */}
           <Route
             path="/predict"
             element={
               <ProtectedRoute user={user} role="student">
-                <PredictorForm />
+                <PredictorForm savePrediction={savePrediction} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute user={user} role="student">
+                <StudentDashboard
+                  latestPrediction={latestPrediction}
+                  predictionHistory={predictionHistory}
+                />
               </ProtectedRoute>
             }
           />
 
-          {/* Study Plan */}
           <Route
             path="/study-plan"
             element={
@@ -208,7 +243,6 @@ function AppContent({ user, handleLogin, handleLogout }) {
             }
           />
 
-          {/* Insights */}
           <Route
             path="/insights"
             element={
@@ -218,9 +252,8 @@ function AppContent({ user, handleLogin, handleLogout }) {
             }
           />
 
-          {/* =================== FACULTY ROUTES =================== */}
+          {/* ====================== FACULTY ROUTES ====================== */}
 
-          {/* Faculty dashboard */}
           <Route
             path="/faculty-dashboard"
             element={
@@ -230,7 +263,6 @@ function AppContent({ user, handleLogin, handleLogout }) {
             }
           />
 
-          {/* Faculty predictor */}
           <Route
             path="/faculty/predict"
             element={
@@ -240,7 +272,7 @@ function AppContent({ user, handleLogin, handleLogout }) {
             }
           />
 
-          {/* FALLBACK */}
+          {/* DEFAULT */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Box>

@@ -35,12 +35,14 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   const [insights, setInsights] = useState({ rec: [], alerts: [] });
   const [simResult, setSimResult] = useState(null);
 
-  const inputs = latestPrediction?.inputs || {};
-  const attendance = Number(inputs.attendance ?? 0);
-  const studyHours = Number(inputs.studyHours ?? inputs.study_hours ?? 0);
-  const marks = Number(inputs.internalTotal ?? inputs.internal_total ?? 0);
-  const assignments = Number(inputs.assignments ?? 0);
-  const participation = inputs.participation ?? "Medium";
+  // 🔥 Extract values from latest prediction
+const inputs = latestPrediction?.inputs || {};
+
+const attendance = Number(inputs.attendance ?? 0);
+const studyHours = Number(inputs.studyHours ?? inputs.study_hours ?? 0);
+const marks = Number(inputs.internalTotal ?? inputs.internal_total ?? 0);
+const assignments = Number(inputs.assignments ?? 0);
+const participation = inputs.participation ?? "Medium";
 
   const participationWeight = participation === "High" ? 10 : participation === "Medium" ? 5 : 2;
   const performanceScore = Math.round(
@@ -107,6 +109,7 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     <Box sx={{ p: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Typography variant="h4">Student Dashboard</Typography>
+        
         <Chip label={`${scoreLabel} (${performanceScore})`} color={RiskColor} />
       </Box>
 
@@ -132,15 +135,6 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                   Model & insights
                 </Typography>
-
-                {latestPrediction?.prediction && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2">Your saved prediction</Typography>
-                    <Typography variant="h6" color={latestPrediction.prediction === "Pass" ? "success.light" : "error.light"}>
-                      {latestPrediction.prediction} — {(latestPrediction.confidence * 100).toFixed(0)}%
-                    </Typography>
-                  </Box>
-                )}
               </Grid>
             </Grid>
           </CardContent>
@@ -171,7 +165,7 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
         ))}
       </Grid>
 
-      {/* Charts */}
+      {/* Performance Breakdown Chart */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Card>
@@ -191,6 +185,7 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           </Card>
         </Grid>
 
+        {/* AI Recommendations */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
@@ -216,7 +211,7 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
         </Grid>
       </Grid>
 
-      {/* SUBJECT HEATMAP (FULL WIDTH NOW) */}
+      {/* SUBJECT HEATMAP */}
       <Grid container spacing={3} sx={{ mt: 3 }}>
         <Grid item xs={12}>
           <Card>
