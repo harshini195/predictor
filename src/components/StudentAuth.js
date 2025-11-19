@@ -193,7 +193,7 @@ export default function StudentAuth({ onLogin }) {
                                     AI Student Performance Predictor
                                 </Typography>
                                 <Typography variant="h6" sx={{ mt: 1, opacity: 0.8 }}>
-                                    Predict, analyse, and improve academic success.
+                                    Predict, analyse, and improve academic success
                                 </Typography>
                             </Box>
                         </Fade>
