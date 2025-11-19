@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import SchoolIcon from '@mui/icons-material/School';
-import authBg from '../images/bg_5.png';
+import authBg from '../images/bg_5.jpg';
 import {
     Box,
     Typography,
@@ -203,7 +203,7 @@ export default function StudentAuth({ onLogin }) {
                     {/* LEFT PANEL */}
                     <Grid item xs={12} md={6}>
                         <Fade in timeout={800}>
-                            <Box sx={{ color: "black", textAlign: { xs: "center", md: "left" } }}>
+                            <Box sx={{ color: "white", textAlign: { xs: "center", md: "left" } }}>
                                 <SchoolIcon sx={{ fontSize: 70, mb: 1 }} />
                                 <Typography variant="h3" fontWeight="bold">
                                     AI Student Performance Predictor
