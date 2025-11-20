@@ -1,5 +1,5 @@
-// FULL FILE — WITH PROFESSIONAL PIE CHART
-// ========================================
+// FULL UPDATED STUDENT DASHBOARD WITH PROFILE
+// ======================================================
 
 import React, { useEffect, useState } from "react";
 import jsPDF from "jspdf";
@@ -26,7 +26,6 @@ import {
   Schedule,
   Assessment,
   QueryStats,
-  Insights,
 } from "@mui/icons-material";
 
 import {
@@ -39,11 +38,10 @@ import {
 
 import PredictionSimulator from "./PredictionSimulator";
 
-// NEW Professional Styling Colors
 const PIE_COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335"];
 const PIE_BORDER_COLOR = "#ffffff";
 
-export default function StudentDashboard({ latestPrediction, predictionHistory = [] }) {
+export default function StudentDashboard({ latestPrediction, predictionHistory = [], studentProfile }) {
   const [insights, setInsights] = useState({ rec: [], alerts: [] });
   const [simResult, setSimResult] = useState(null);
 
@@ -55,37 +53,18 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   const assignments = Number(inputs.assignments ?? 0);
   const participation = inputs.participation ?? "Medium";
 
-  const participationWeight =
-    participation === "High" ? 10 : participation === "Medium" ? 5 : 2;
+  const participationWeight = participation === "High" ? 10 : participation === "Medium" ? 5 : 2;
 
   const performanceScore = Math.round(
     attendance * 0.30 +
-    studyHours * 8 * 0.20 +
-    (marks / 2.5) * 0.25 +
-    assignments * 10 * 0.10 +
-    participationWeight * 0.15
+      studyHours * 8 * 0.20 +
+      (marks / 2.5) * 0.25 +
+      assignments * 10 * 0.10 +
+      participationWeight * 0.15
   );
 
-  const scoreLabel =
-    performanceScore >= 80
-      ? "Excellent"
-      : performanceScore >= 60
-        ? "Good"
-        : performanceScore >= 40
-          ? "Average"
-          : "Needs Improvement";
-
-  const RiskColor =
-    performanceScore >= 80
-      ? "success"
-      : performanceScore >= 60
-        ? "info"
-        : performanceScore >= 40
-          ? "warning"
-          : "error";
-
-  // PROFESSIONAL PIE DATA
   const total = attendance + studyHours * 8 + marks / 2.5 + assignments * 16.6;
+
   const pieData = [
     { name: "Attendance", value: attendance, pct: (attendance / total) * 100 },
     { name: "Study Hours", value: studyHours * 8, pct: ((studyHours * 8) / total) * 100 },
@@ -98,19 +77,17 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     const alerts = [];
 
     if (attendance && attendance < 75) alerts.push("Low attendance — aim for 75%+");
-    if (studyHours && studyHours < 2)
-      alerts.push("Study more — 2 hours/day recommended");
-    if (marks && marks < 150) alerts.push("Internal marks low — revise regularly");
-    if (assignments && assignments < 3) alerts.push("Submit more assignments");
-    if (latestPrediction?.prediction === "Fail")
-      alerts.push("Model predicted 'Fail' — act fast");
+    if (studyHours && studyHours < 2) alerts.push("Study more — minimum 2 hours/day recommended");
+    if (marks && marks < 150) alerts.push("Internal marks low — revise consistently");
+    if (assignments && assignments < 3) alerts.push("Submit pending assignments");
+    if (latestPrediction?.prediction === "Fail") alerts.push("Model predicted 'Fail' — take corrective steps");
 
-    rec.push("Follow a weekly study schedule");
-    rec.push("Solve previous question papers");
-    rec.push("Focus on weak subject areas (see heatmap)");
+    rec.push("Follow a structured weekly study plan");
+    rec.push("Solve previous years’ question papers");
+    rec.push("Focus more on the weak subjects displayed in heatmap");
 
     setInsights({ rec, alerts });
-  }, [latestPrediction, attendance, studyHours, marks, assignments]);
+  }, [attendance, studyHours, marks, assignments, latestPrediction]);
 
   const subjectNames = ["SEPM", "CN", "TOC", "CV/CC", "RM"];
   let subjectScores = [0, 0, 0, 0, 0];
@@ -128,19 +105,16 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
   }
 
   const subjectHeatColors = subjectScores.map((score) =>
-    score < 25 ? "#e15759" : score < 35 ? "#f28e2b" : "#59a14f"
+    score > 35
+      ? "#1B5E20"   // Dark green – high marks
+      : score >= 20
+      ? "#4CAF50"   // Medium green – mid marks
+      : "#A5D6A7"    // Light green – low marks
   );
 
-  // -------------------------------------------------------
-  // EXPORT AS PDF (unchanged)
-  // -------------------------------------------------------
   const generateReport = async () => {
-    const element = document.getElementById("pdf-section"); // ONLY THIS PART
-
-    if (!element) {
-      alert("Dashboard element not found for export.");
-      return;
-    }
+    const element = document.getElementById("pdf-section");
+    if (!element) return alert("Dashboard element not found for export.");
 
     const canvas = await html2canvas(element, {
       scale: 2,
@@ -152,110 +126,47 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
     const pdf = new jsPDF("p", "pt", "a4");
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    const imgWidth = pdfWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    if (imgHeight <= pdfHeight) {
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-    } else {
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        pdf.addPage();
-        position -= pdfHeight;
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-    }
-
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
     pdf.save("Student_Dashboard_Report.pdf");
   };
 
-  // -------------------------------------------------------
-
   return (
-    <Box id="dashboard-root" sx={{ p: 3, background: "#ffffff" }}>
+    <Box id="dashboard-root" sx={{ p: 3, background: "#fff" }}>
+
+      
 
       {/* START OF PDF EXPORT SECTION */}
       <Box id="pdf-section">
 
-        {/* HEADER */}
         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
           <Typography variant="h4">Student Dashboard</Typography>
           <Button variant="contained" onClick={generateReport} sx={{ background: "#1CC7D0" }}>
             Export PDF
           </Button>
         </Box>
-        {/* =====================================================
-   GOAL SETTING — CLEAN CARDS + AUTO HIDE TASKS
-===================================================== */}
+
+        {/* ---------------------- GOALS SECTION ---------------------- */}
         <Fade in timeout={700}>
           <Grid container spacing={3} sx={{ mb: 3 }}>
 
-            {/* ATTENDANCE GOAL */}
+            {/* Attendance Goal */}
             <Grid item xs={12} md={6}>
-              <Card
-                sx={{
-                  background: "linear-gradient(135deg,#4E73DF,#1CC7D0)",
-                  color: "white",
-                  borderRadius: 3,
-                  p: 1,
-                }}
-              >
+              <Card sx={{ background: "linear-gradient(135deg,#4E73DF,#1CC7D0)", color: "white", borderRadius: 3 }}>
                 <CardContent>
-                  <Typography variant="h6" fontWeight="bold">
-                    Attendance Goal
-                  </Typography>
-
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min((attendance / 75) * 100, 100)}
-                    sx={{
-                      mt: 1,
-                      height: 10,
-                      borderRadius: 5,
-                      bgcolor: "rgba(255,255,255,0.3)",
-                      "& .MuiLinearProgress-bar": { bgcolor: "white" },
-                    }}
-                  />
-
-                  {/* AUTO MESSAGE */}
+                  <Typography variant="h6" fontWeight="bold">Attendance Goal</Typography>
+                  <LinearProgress variant="determinate" value={Math.min((attendance / 75) * 100, 100)} sx={{ mt: 1, height: 10, borderRadius: 5 }} />
                   {attendance >= 75 ? (
-                    <Typography sx={{ mt: 1, fontWeight: "bold" }}>
-                      🎉 Goal Achieved! Great job!
-                    </Typography>
+                    <Typography sx={{ mt: 1, fontWeight: "bold" }}>🎉 Goal Achieved!</Typography>
                   ) : (
-                    <Typography sx={{ mt: 1 }}>
-                      Current: {attendance}% / Target: 75%
-                    </Typography>
+                    <Typography sx={{ mt: 1 }}>Current: {attendance}% / Target: 75%</Typography>
                   )}
 
-                  {/* SHOW TASKS ONLY IF GOAL NOT REACHED */}
                   {attendance < 75 && (
                     <Box sx={{ mt: 2 }}>
-                      {[
-                        "Attend all classes this week",
-                        "Avoid unnecessary leave",
-                        "Check attendance daily",
-                      ].map((t, idx) => (
-                        <Chip
-                          key={idx}
-                          label={t}
-                          variant="outlined"
-                          sx={{
-                            mr: 1,
-                            mb: 1,
-                            color: "white",
-                            borderColor: "white",
-                            fontSize: "0.75rem",
-                          }}
-                        />
+                      {["Attend all classes", "Avoid unnecessary leave", "Check attendance daily"].map((t, i) => (
+                        <Chip key={i} label={t} variant="outlined" sx={{ mr: 1, mb: 1, color: "white", borderColor: "white" }} />
                       ))}
                     </Box>
                   )}
@@ -263,64 +174,22 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
               </Card>
             </Grid>
 
-            {/* ASSIGNMENTS GOAL */}
+            {/* Assignments Goal */}
             <Grid item xs={12} md={6}>
-              <Card
-                sx={{
-                  background: "linear-gradient(135deg,#4E73DF,#1CC7D0)",
-                  color: "white",
-                  borderRadius: 3,
-                  p: 1,
-                }}
-              >
+              <Card sx={{ background: "linear-gradient(135deg,#4E73DF,#1CC7D0)", color: "white", borderRadius: 3 }}>
                 <CardContent>
-                  <Typography variant="h6" fontWeight="bold">
-                    Assignments Goal
-                  </Typography>
-
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min((assignments / 6) * 100, 100)}
-                    sx={{
-                      mt: 1,
-                      height: 10,
-                      borderRadius: 5,
-                      bgcolor: "rgba(255,255,255,0.3)",
-                      "& .MuiLinearProgress-bar": { bgcolor: "white" },
-                    }}
-                  />
-
-                  {/* AUTO MESSAGE */}
+                  <Typography variant="h6" fontWeight="bold">Assignments Goal</Typography>
+                  <LinearProgress variant="determinate" value={Math.min((assignments / 6) * 100, 100)} sx={{ mt: 1, height: 10, borderRadius: 5 }} />
                   {assignments >= 6 ? (
-                    <Typography sx={{ mt: 1, fontWeight: "bold" }}>
-                      🎉 All assignments submitted!
-                    </Typography>
+                    <Typography sx={{ mt: 1, fontWeight: "bold" }}>🎉 All Assignments Completed</Typography>
                   ) : (
-                    <Typography sx={{ mt: 1 }}>
-                      Submitted: {assignments} / 6
-                    </Typography>
+                    <Typography sx={{ mt: 1 }}>Submitted: {assignments} / 6</Typography>
                   )}
 
-                  {/* TASKS ONLY IF NOT REACHED */}
                   {assignments < 6 && (
                     <Box sx={{ mt: 2 }}>
-                      {[
-                        "Finish pending assignments",
-                        "Submit before deadline",
-                        "Clarify doubts with faculty",
-                      ].map((t, idx) => (
-                        <Chip
-                          key={idx}
-                          label={t}
-                          variant="outlined"
-                          sx={{
-                            mr: 1,
-                            mb: 1,
-                            color: "white",
-                            borderColor: "white",
-                            fontSize: "0.75rem",
-                          }}
-                        />
+                      {["Finish pending assignments", "Submit before deadline", "Clarify doubts"].map((t, i) => (
+                        <Chip key={i} label={t} variant="outlined" sx={{ mr: 1, mb: 1, color: "white", borderColor: "white" }} />
                       ))}
                     </Box>
                   )}
@@ -331,30 +200,21 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           </Grid>
         </Fade>
 
-
-        {/* =====================================================
-         TOP METRICS (UNCHANGED)
-      ===================================================== */}
+        {/* ---------------------- TOP METRICS ---------------------- */}
         <Grid container spacing={3} sx={{ mt: 1, mb: 3 }}>
-          {[
-            { label: "Attendance", value: `${attendance}%`, icon: <School />, color: "success" },
+          {[{ label: "Attendance", value: `${attendance}%`, icon: <School />, color: "success" },
             { label: "Study Hours/day", value: studyHours, icon: <Schedule />, color: "info" },
             { label: "Internal Marks", value: `${marks}/250`, icon: <Assessment />, color: "warning" },
-            { label: "Assignments", value: assignments, icon: <QueryStats />, color: "secondary" },
-          ].map((item, i) => (
+            { label: "Assignments", value: assignments, icon: <QueryStats />, color: "secondary" }].map((item, i) => (
             <Grid item xs={12} sm={6} md={3} key={i}>
               <Grow in timeout={600 + i * 200}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <Avatar sx={{ bgcolor: `${item.color}.main`, mr: 2 }}>
-                        {item.icon}
-                      </Avatar>
+                      <Avatar sx={{ bgcolor: `${item.color}.main`, mr: 2 }}>{item.icon}</Avatar>
                       <Typography variant="h6">{item.label}</Typography>
                     </Box>
-                    <Typography variant="h4" color={`${item.color}.main`}>
-                      {item.value}
-                    </Typography>
+                    <Typography variant="h4" color={`${item.color}.main`}>{item.value}</Typography>
                   </CardContent>
                 </Card>
               </Grow>
@@ -362,42 +222,19 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           ))}
         </Grid>
 
-        {/* =====================================================
-         ★★★ PROFESSIONAL PIE CHART ★★★
-      ===================================================== */}
+        {/* ---------------------- PIE CHART ---------------------- */}
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 1, fontWeight: "bold" }}>
-                  Performance Breakdown
-                </Typography>
-
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: "bold" }}>Performance Breakdown</Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <RePieChart>
-                    <Tooltip formatter={(v, n) => [`${v}`, `${n}`]} />
-
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={110}
-                      innerRadius={50}
-                      paddingAngle={4}
-                      stroke={PIE_BORDER_COLOR}
-                      strokeWidth={4}
-                      label={({ name, pct }) =>
-                        `${name}: ${pct.toFixed(1)}%`
-                      }
-                      labelStyle={{
-                        fontSize: "12px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={index} fill={PIE_COLORS[index]} />
+                    <Tooltip />
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={110} innerRadius={50} paddingAngle={4} stroke={PIE_BORDER_COLOR} strokeWidth={4}
+                      label={({ name, pct }) => `${name}: ${pct.toFixed(1)}%`}>
+                      {pieData.map((entry, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i]} />
                       ))}
                     </Pie>
                   </RePieChart>
@@ -406,62 +243,36 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
             </Card>
           </Grid>
 
-          {/* -----------------------------------------------------
-            AI RECOMMENDATIONS — UNCHANGED
-        ------------------------------------------------------ */}
+          {/* ---------------------- AI RECOMMENDATIONS ---------------------- */}
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6">AI Recommendations</Typography>
                 {insights.rec.map((r, i) => (
-                  <Alert key={i} severity="info" sx={{ mb: 1 }}>
-                    {r}
-                  </Alert>
+                  <Alert key={i} severity="info" sx={{ mb: 1 }}>{r}</Alert>
                 ))}
-
                 <Divider sx={{ my: 1 }} />
-
                 <Typography variant="subtitle2">Alerts</Typography>
-
-                {insights.alerts.length > 0 ? (
-                  insights.alerts.map((a, i) => (
-                    <Alert key={i} severity="warning" sx={{ mb: 1 }}>
-                      {a}
-                    </Alert>
-                  ))
-                ) : (
-                  <Alert severity="success">No active alerts</Alert>
-                )}
+                {insights.alerts.length > 0 ? insights.alerts.map((a, i) => (
+                  <Alert key={i} severity="warning" sx={{ mb: 1 }}>{a}</Alert>
+                )) : <Alert severity="success">No active alerts</Alert>}
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-                {/* =====================================================
-         SUBJECT HEATMAP (UNCHANGED)
-      ===================================================== */}
+        {/* ---------------------- SUBJECT HEATMAP ---------------------- */}
         <Grid container spacing={3} sx={{ mt: 3 }}>
           <Grid item xs={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6">Subject-wise Heatmap</Typography>
-
                 <Grid container spacing={2} sx={{ mt: 1, justifyContent: "center" }}>
-                  {subjectNames.map((subj, idx) => (
-                    <Grid item xs={6} sm={4} md={2} key={subj}>
-                      <Box
-                        sx={{
-                          p: 2,
-                          m: 1,
-                          borderRadius: 3,
-                          bgcolor: subjectHeatColors[idx],
-                          color: "white",
-                          textAlign: "center",
-                          width: "100%",
-                        }}
-                      >
+                  {subjectNames.map((subj, i) => (
+                    <Grid item xs={6} sm={4} md={2} key={i}>
+                      <Box sx={{ p: 2, m: 1, borderRadius: 3, bgcolor: subjectHeatColors[i], color: "white", textAlign: "center" }}>
                         <Typography variant="subtitle2">{subj}</Typography>
-                        <Typography variant="h6">{subjectScores[idx]}</Typography>
+                        <Typography variant="h6">{subjectScores[i]}</Typography>
                       </Box>
                     </Grid>
                   ))}
@@ -469,18 +280,38 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
               </CardContent>
             </Card>
           </Grid>
-        </Grid>  {/* ✅ Correct heatmap closing */}
+        </Grid>
 
-      </Box> {/* ✅ END PDF EXPORT SECTION */}
+      </Box>
+      {/* ⭐ HEATMAP LEGEND ⭐ */}
+<Box sx={{ mt: 3, textAlign: "center" }}>
+  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>
+    Heatmap Legend
+  </Typography>
+
+  <Box sx={{ display: "flex", justifyContent: "center", gap: 3 }}>
+    <Box sx={{ display: "flex", alignItems: "center" }}>
+      <Box sx={{ width: 18, height: 18, bgcolor: "#1B5E20", borderRadius: 1, mr: 1 }} />
+      <Typography variant="body2">Above 35 (High)</Typography>
+    </Box>
+
+    <Box sx={{ display: "flex", alignItems: "center" }}>
+      <Box sx={{ width: 18, height: 18, bgcolor: "#4CAF50", borderRadius: 1, mr: 1 }} />
+      <Typography variant="body2">20–35 (Medium)</Typography>
+    </Box>
+
+    <Box sx={{ display: "flex", alignItems: "center" }}>
+      <Box sx={{ width: 18, height: 18, bgcolor: "#A5D6A7", borderRadius: 1, mr: 1 }} />
+      <Typography variant="body2">Below 20 (Low)</Typography>
+    </Box>
+  </Box>
+</Box>
 
 
-      {/* SIMULATOR — NOT INCLUDED IN PDF */}
-      <PredictionSimulator
-        initial={{ attendance, studyHours, internalTotal: marks, assignments, participation }}
-        onSimulate={(data) => setSimResult(data)}
-      />
+      {/* SIMULATOR NOT IN PDF */}
+      <PredictionSimulator initial={{ attendance, studyHours, internalTotal: marks, assignments, participation }} onSimulate={(data) => setSimResult(data)} />
 
-      {/* RECENT PREDICTIONS — NOT INCLUDED IN PDF */}
+      {/* RECENT PREDICTIONS */}
       <Card sx={{ mt: 3 }}>
         <CardContent>
           <Typography variant="h6">Recent Predictions</Typography>
@@ -490,16 +321,11 @@ export default function StudentDashboard({ latestPrediction, predictionHistory =
           {predictionHistory.slice(0, 5).map((p, i) => (
             <Box key={i} sx={{ display: "flex", justifyContent: "space-between", my: 1 }}>
               <Typography>{new Date(p.date).toLocaleString()}</Typography>
-              <Typography
-                color={p.prediction === "Pass" ? "success.main" : "error.main"}
-                fontWeight="bold"
-              >
-                {p.prediction} ({Math.round(p.confidence * 100)}%)
-              </Typography>
+              <Typography color={p.prediction === "Pass" ? "success.main" : "error.main"} fontWeight="bold">{p.prediction} ({Math.round(p.confidence * 100)}%)</Typography>
             </Box>
           ))}
         </CardContent>
       </Card>
-    </Box> 
+    </Box>
   );
 }
